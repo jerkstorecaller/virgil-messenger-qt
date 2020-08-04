@@ -50,7 +50,7 @@ class VSQCrashReporter : public QObject
     Q_OBJECT
 
 public:
-    VSQCrashReporter(VSQSettings *settings, QObject *parent);
+    VSQCrashReporter(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, QObject *parent);
     ~VSQCrashReporter() override;
 
     void check();
@@ -67,7 +67,7 @@ private:
     void endpointReply();
 
     VSQSettings *m_settings;
-    QNetworkAccessManager *m_manager;
+    QNetworkAccessManager *m_networkAccessManager;
     QString m_url;
 };
 

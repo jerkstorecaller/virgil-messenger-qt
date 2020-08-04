@@ -45,19 +45,22 @@
 
 #include "VSQCommon.h"
 
-Q_DECLARE_LOGGING_CATEGORY(lcApplication)
+class QNetworkAccessManager;
 
 class VSQCrashReporter;
+class VSQLogging;
 class VSQMessenger;
 class VSQQmlEngine;
 class VSQSettings;
+
+Q_DECLARE_LOGGING_CATEGORY(lcApplication)
 
 class VSQApplication : public ApplicationBase
 {
     Q_OBJECT
 
 public:
-    VSQApplication(int &argc, char **argv);
+    VSQApplication(VSQLogging *logging, int &argc, char **argv);
     virtual ~VSQApplication();
 
     static void initialize();
@@ -74,6 +77,8 @@ private:
 
     void onApplicationStateChanged(Qt::ApplicationState state);
 
+    VSQLogging *m_logging;
+    QNetworkAccessManager *m_networkAccessManager;
     VSQSettings *m_settings;
     VSQCrashReporter *m_crashReporter;
     VSQMessenger *m_messenger;

@@ -34,49 +34,106 @@
 
 #include "client/VSQUploader.h"
 
+#include <QFileInfo>
+
 #include <QXmppClient.h>
+#include <QXmppUploadRequestManager.h>
 
-#include <QEventLoop> // FIXME(fpohtmeh): remove upload emulation code
-#include <QThread> // FIXME(fpohtmeh): remove upload emulation code
+#include "client/VSQUpload.h"
 
-VSQUploader::VSQUploader(QXmppClient *client, QObject *parent)
+Q_LOGGING_CATEGORY(lcUploader, "uploader");
+
+VSQUploader::VSQUploader(QXmppClient *client, QNetworkAccessManager *networkAccessManager, QObject *parent)
     : QObject(parent)
-    , m_client(client)
+    , m_networkAccessManager(networkAccessManager)
+    , m_xmppManager(new QXmppUploadRequestManager())
+    , m_activeUploadsCount(0)
 {
-    // FIXME(fpohtmeh): finish uploader initialization
-    client->addExtension(&m_manager);
+    client->addExtension(m_xmppManager.get());
+    connect(m_xmppManager.get(), &QXmppUploadRequestManager::slotReceived, this, &VSQUploader::onSlotReceived);
+    connect(m_xmppManager.get(), &QXmppUploadRequestManager::requestFailed, this, &VSQUploader::onRequestFailed);
 }
 
 VSQUploader::~VSQUploader()
 {
+    for (auto upload : m_uploads) {
+        upload->abort();
+    }
 #ifdef VS_DEVMODE
     qCDebug(lcDev) << "~Uploader";
 #endif
 }
 
-void VSQUploader::upload(const ExtMessage &message)
+void VSQUploader::addUpload(const QString &messageId, const Attachment &attachment)
 {
-    const auto id = message.id;
-    const DataSize total = message.attachment->size;
+    qCDebug(lcUploader) << "Adding upload for message:" << messageId;
+    auto upload = new VSQUpload(m_networkAccessManager, messageId, attachment, this);
+    m_uploads.push_back(upload);
+    connect(upload, &VSQUpload::progressChanged, this, std::bind(&VSQUploader::onUploadProgressChanged, this, upload, args::_1, args::_2));
+    connect(upload, &VSQUpload::finished, this, std::bind(&VSQUploader::onUploadFinished, this, upload));
+    connect(upload, &VSQUpload::failed, this, std::bind(&VSQUploader::onUploadFailed, this, upload, args::_1));
+    startNextUpload();
+}
 
-    emit uploadStarted(message);
-    QEventLoop loop;
-    DataSize u = 0;
-    for (; u <= total; u += total / 30) {
-        emit uploadProgressChanged(message, u, total);
-        loop.processEvents();
-        QThread::currentThread()->msleep(100);
+void VSQUploader::onSlotReceived(const QXmppHttpUploadSlotIq &slot)
+{
+    qCDebug(lcUploader) << "onSlotReceived";
+    for (auto upload : m_uploads) {
+        if (slot.id() != upload->slotId())
+            continue;
+        upload->start(slot);
     }
-    if (u != total) {
-        emit uploadProgressChanged(message, total, total);
-        loop.processEvents();
+}
+
+void VSQUploader::onRequestFailed(const QXmppHttpUploadRequestIq &request)
+{
+    Q_UNUSED(request);
+    qCDebug(lcUploader) << "onRequestFailed";
+}
+
+void VSQUploader::onUploadProgressChanged(VSQUpload *upload, DataSize bytesReceived, DataSize bytesTotal)
+{
+    qCDebug(lcUploader) << "Upload progress:" << bytesReceived << "/" << bytesTotal;
+    emit uploadProgressChanged(upload->messageId(), bytesReceived, bytesTotal);
+}
+
+void VSQUploader::onUploadFinished(VSQUpload *upload)
+{
+    --m_activeUploadsCount;
+    emit uploadFinished(upload->messageId());
+    startNextUpload();
+}
+
+void VSQUploader::onUploadFailed(VSQUpload *upload, const QString &errorText)
+{
+    --m_activeUploadsCount;
+    emit uploadFailed(upload->messageId(), errorText);
+    m_uploads.push_back(upload); // return upload to queue for future processing
+}
+
+void VSQUploader::startNextUpload()
+{
+    if (m_uploads.empty())
+        return;
+    if (m_activeUploadsCount > 0)
+        return; // TODO(fpohtmeh): add parallel uploads
+
+    // TODO(fpohtmeh): check connection
+    ++m_activeUploadsCount;
+    auto upload = m_uploads.front();
+    m_uploads.erase(m_uploads.begin());
+
+    const auto attachment = upload->attachment();
+    auto slotId = m_xmppManager->requestUploadSlot(QFileInfo(attachment.filePath()), attachment.fileName(), QString());
+    upload->setSlotId(slotId);
+
+    if (!slotId.isEmpty()) {
+        qCDebug(lcUploader) << "Slot id:" << slotId;
     }
-    // FIXME(fpohtmeh): implement real upload
-    emit uploaded(message);
-    loop.processEvents();
-    // FIXME(fpohtmeh): remove upload emulation code
-    if (m_client->sendPacket(message.xmpp))
-        emit messageSent(message);
-    else
-        emit sendMessageFailed(message, QLatin1String("Message sending failed"));
+    else {
+        const QString errorText("Slot id is empty");
+        qCWarning(lcUploader) << errorText;
+        onUploadFailed(upload, errorText);
+        //startNextUpload(); // TODO(fpohtmeh): remove
+    }
 }

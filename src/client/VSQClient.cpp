@@ -70,11 +70,11 @@ const QString kPushNotificationsFormTypeVal = "http://jabber.org/protocol/pubsub
 Q_LOGGING_CATEGORY(lcClient, "client")
 Q_LOGGING_CATEGORY(lcXmpp, "xmpp")
 
-VSQClient::VSQClient(VSQSettings *settings, QObject *parent)
+VSQClient::VSQClient(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, QObject *parent)
     : QObject(parent)
     , m_core(settings)
     , m_client(this)
-    , m_uploader(&m_client, this)
+    , m_uploader(&m_client, networkAccessManager, this)
     , m_lastErrorText()
     , m_waitingForConnection(false)
 {}
@@ -143,11 +143,9 @@ void VSQClient::start()
     connect(&m_client, &QXmppClient::error, this, &VSQClient::stopWaitForConnection);
 
     // Uploading: uploader-to-client
-    connect(&m_uploader, &VSQUploader::messageSent, this, &VSQClient::messageSent);
-    connect(&m_uploader, &VSQUploader::sendMessageFailed, this, &VSQClient::sendMessageFailed);
     connect(&m_uploader, &VSQUploader::uploadStarted, this, &VSQClient::uploadStarted);
     connect(&m_uploader, &VSQUploader::uploadProgressChanged, this, &VSQClient::uploadProgressChanged);
-    connect(&m_uploader, &VSQUploader::uploaded, this, &VSQClient::uploaded);
+    connect(&m_uploader, &VSQUploader::uploadFinished, this, &VSQClient::uploadFinished);
     connect(&m_uploader, &VSQUploader::uploadFailed, this, &VSQClient::uploadFailed);
 }
 
@@ -254,7 +252,7 @@ void VSQClient::subscribeOnPushNotifications(bool enable)
 #endif // VS_PUSHNOTIFICATIONS
 }
 
-Optional<ExtMessage> VSQClient::createExtMessage(const Message &message)
+Optional<QXmppMessage> VSQClient::createXmppMessage(const Message &message)
 {
     auto encryptedBody = m_core.encryptMessageBody(message.contact, message.body);
     if (!encryptedBody) {
@@ -269,9 +267,42 @@ Optional<ExtMessage> VSQClient::createExtMessage(const Message &message)
     xmppMessage.setId(message.id);
     xmppMessage.setReceiptRequested(true);
 
-    ExtMessage extMessage(message);
-    extMessage.xmpp = xmppMessage;
-    return extMessage;
+    return xmppMessage;
+}
+
+Optional<Message> VSQClient::createMessage(const QXmppMessage &xmppMessage)
+{
+    QString sender = xmppMessage.from().split("@").first();
+    QString recipient = xmppMessage.to().split("@").first();
+    qCInfo(lcClient) << "Sender:" << sender << " Recipient:" << recipient;
+
+    // Get encrypted message
+    QString encryptedBody = xmppMessage.body();
+    // Decrypt message
+    const auto body = m_core.decryptMessageBody(sender, encryptedBody);
+    if (!body) {
+        m_lastErrorText = m_core.lastErrorText();
+        return NullOptional;
+    }
+
+    Message message;
+    message.id = xmppMessage.id();
+    message.timestamp = QDateTime::currentDateTime();
+    message.body = *body;
+    // FIXME(fpohtmeh): get attachment from xmpp message?
+    if (sender == m_core.user()) {
+        // Message from self sent from another device
+        message.contact = recipient;
+        message.author = Message::Author::User;
+        message.status = Message::Status::Sent;
+    }
+    else {
+        // Receive message from other user
+        message.contact = sender;
+        message.author = Message::Author::Contact;
+        message.status = Message::Status::Received;
+    }
+    return message;
 }
 
 void VSQClient::onSignIn(const QString &userWithEnv)
@@ -344,39 +375,13 @@ void VSQClient::onError(QXmppClient::Error error)
     xmppReconnect();
 }
 
-void VSQClient::onMessageReceived(const QXmppMessage &message)
+void VSQClient::onMessageReceived(const QXmppMessage &xmppMessage)
 {
-    QString sender = message.from().split("@").first();
-    QString recipient = message.to().split("@").first();
-    qCInfo(lcClient) << "Sender:" << sender << " Recipient:" << recipient;
-
-    // Get encrypted message
-    QString encryptedBody = message.body();
-    // Decrypt message
-    const auto body = m_core.decryptMessageBody(sender, encryptedBody);
-    if (!body) {
-        emit receiveMessageFailed(m_core.lastErrorText());
-        return;
-    }
-
-    Message msg;
-    msg.id = VSQUtils::createUuid();
-    msg.timestamp = QDateTime::currentDateTime();
-    msg.body = *body;
-    // FIXME(fpohtmeh): get attachment from xmpp message?
-    if (sender == m_core.user()) {
-        // Message from self sent from another device
-        msg.contact = recipient;
-        msg.author = Message::Author::User;
-        msg.status = Message::Status::Sent;
-    }
-    else {
-        // Receive message from other user
-        msg.contact = sender;
-        msg.author = Message::Author::Contact;
-        msg.status = Message::Status::Received;
-    }
-    emit messageReceived(msg);
+    auto message = createMessage(xmppMessage);
+    if (message)
+        emit messageReceived(*message);
+    else
+        emit receiveMessageFailed(xmppMessage.id(), m_lastErrorText);
 }
 
 void VSQClient::onPresenceReceived(const QXmppPresence &presence)
@@ -399,17 +404,21 @@ void VSQClient::onStateChanged(QXmppClient::State state)
 
 void VSQClient::onSendMessage(const Message &message)
 {
-    auto msg = createExtMessage(message);
-    if (!msg) {
-        emit sendMessageFailed(message, m_core.lastErrorText());
+    if (message.attachment) {
+        m_uploader.addUpload(message.id, *message.attachment);
         return;
     }
-    if (message.attachment)
-        m_uploader.upload(*msg);
-    else if (m_client.sendPacket(msg->xmpp))
-        emit messageSent(message);
-    else
-        emit sendMessageFailed(message, QLatin1String("Message sending failed"));
+
+    auto xmppMessage = createXmppMessage(message);
+    if (!xmppMessage) {
+        emit sendMessageFailed(message.id, m_lastErrorText);
+    }
+    else if (m_client.sendPacket(*xmppMessage)) {
+        emit messageSent(message.id);
+    }
+    else {
+        emit sendMessageFailed(message.id, QLatin1String("Message sending failed"));
+    }
 }
 
 void VSQClient::onCheckConnectionState()

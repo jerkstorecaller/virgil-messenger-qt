@@ -48,10 +48,10 @@ Q_LOGGING_CATEGORY(lcCrashReporter, "crashreport")
 
 using namespace VirgilIoTKit;
 
-VSQCrashReporter::VSQCrashReporter(VSQSettings *settings, QObject *parent)
+VSQCrashReporter::VSQCrashReporter(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
-    , m_manager(nullptr)
+    , m_networkAccessManager(networkAccessManager)
 {
     connect(this, &VSQCrashReporter::send, this, &VSQCrashReporter::sendLogFiles);
 }
@@ -113,18 +113,13 @@ bool VSQCrashReporter::sendFileToBackendRequest(const QByteArray &fileData)
     vs_messenger_virgil_get_auth_token(buffBearer, sizeBearer);
     qCDebug(lcCrashReporter) << "Backend token:" << buffBearer;
 
-    if (!m_manager)
-        m_manager = new QNetworkAccessManager(this);
-
-    QNetworkRequest request;
-    QUrl strEndpoint(m_url + QLatin1String("/send-logs"));
-    request.setUrl(strEndpoint);
-    qCDebug(lcCrashReporter) << "Send report to endpoint:" << strEndpoint;
+    QNetworkRequest request(QUrl(m_url + QLatin1String("/send-logs")));
+    qCDebug(lcCrashReporter) << "Send report to endpoint:" << request.url();
     request.setHeader(QNetworkRequest::ContentTypeHeader,  QString("application/json"));
     request.setRawHeader("Authorization", buffBearer);
     request.setRawHeader("Version", QCoreApplication::applicationVersion().toUtf8());
     request.setRawHeader("Platform", QSysInfo::kernelType().toUtf8());
-    QNetworkReply* reply = m_manager->post(request, fileData);
+    QNetworkReply* reply = m_networkAccessManager->post(request, fileData);
     connect(reply, &QNetworkReply::finished, this, &VSQCrashReporter::endpointReply);
 
     return true;

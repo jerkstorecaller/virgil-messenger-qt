@@ -38,9 +38,12 @@
 #include <QObject>
 
 #include <QXmppClient.h>
+#include <QXmppMessage.h>
 
 #include "VSQCore.h"
 #include "VSQUploader.h"
+
+class QNetworkAccessManager;
 
 class QXmppCarbonManager;
 
@@ -52,7 +55,7 @@ class VSQClient : public QObject
     Q_OBJECT
 
 public:
-    VSQClient(VSQSettings *settings, QObject *parent);
+    VSQClient(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, QObject *parent);
     ~VSQClient() override;
 
     void start();
@@ -65,12 +68,12 @@ signals:
     void signInWithKey(const QString &userWithEnv, const QString &password);
 
     void signedIn(const QString &userWithEnv);
-    void signInFailed(const QString &userWithEnv, const QString &error);
+    void signInFailed(const QString &userWithEnv, const QString &errorText);
     void signedOut();
     void signedUp(const QString &userWithEnv);
-    void signUpFailed(const QString &userWithEnv, const QString &error);
+    void signUpFailed(const QString &userWithEnv, const QString &errorText);
     void keyBackuped(const QString &password);
-    void backupKeyFailed(const QString &password, const QString &error);
+    void backupKeyFailed(const QString &password, const QString &errorText);
 
     void addContact(const QString &contact);
     void sendMessage(const Message &message);
@@ -79,17 +82,17 @@ signals:
     void virgilUrlChanged(const QString &url);
 
     void contactAdded(const QString &contact);
-    void addContactFailed(const QString &contact, const QString &error);
-    void messageSent(const Message &message);
-    void sendMessageFailed(const Message &message, const QString &error);
+    void addContactFailed(const QString &contact, const QString &errorText);
+    void messageSent(const QString &messageId);
+    void sendMessageFailed(const QString &messageId, const QString &errorText);
     void messageReceived(const Message &message);
-    void receiveMessageFailed(const QString &error);
+    void receiveMessageFailed(const QString &messageId, const QString &errorText);
     void messageDelivered(const QString &messageId);
 
-    void uploadStarted(const Message &message);
-    void uploadProgressChanged(const Message &message, DataSize uploaded, DataSize total);
-    void uploaded(const Message &message);
-    void uploadFailed(const Message &message, const QString &error);
+    void uploadStarted(const QString &messageId);
+    void uploadProgressChanged(const QString &messageId, DataSize bytesReceived, DataSize bytesTotal);
+    void uploadFinished(const QString &messageId);
+    void uploadFailed(const QString &messageId, const QString &errorText);
 
 private:
     bool xmppConnect();
@@ -100,7 +103,8 @@ private:
     void stopWaitForConnection();
     void subscribeOnPushNotifications(bool enable);
 
-    Optional<ExtMessage> createExtMessage(const Message &message);
+    Optional<QXmppMessage> createXmppMessage(const Message &message);
+    Optional<Message> createMessage(const QXmppMessage &xmppMessage);
 
     void onSignIn(const QString &userWithEnv);
     void onSignOut();
@@ -112,7 +116,7 @@ private:
     void onConnected();
     void onDisconnected();
     void onError(QXmppClient::Error error);
-    void onMessageReceived(const QXmppMessage &message);
+    void onMessageReceived(const QXmppMessage &xmppMessage);
     void onPresenceReceived(const QXmppPresence &presence);
     void onIqReceived(const QXmppIq &iq);
     void onStateChanged(QXmppClient::State state);

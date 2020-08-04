@@ -35,6 +35,7 @@
 #ifndef VSQLOGGING_H
 #define VSQLOGGING_H
 
+#include <QMutex>
 #include <QObject>
 
 #include "VSQCommon.h"
@@ -55,9 +56,10 @@ signals:
     void fatal();
 
 private:
-    static void staticHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+    static void staticHandler(QtMsgType type, const QMessageLogContext &context, const QString &message);
 
     static VSQLogging *m_instance;
+    QMutex m_mutex;
 };
 
 #endif // VSQLOGGING_H

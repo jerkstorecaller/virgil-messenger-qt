@@ -43,16 +43,17 @@
 #include "client/VSQCore.h"
 #include "database/VSQDatabase.h"
 
-VSQMessenger::VSQMessenger(VSQSettings *settings, VSQCrashReporter *crashReporter, QObject *parent)
+VSQMessenger::VSQMessenger(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, VSQCrashReporter *crashReporter, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_networkAccessManager(networkAccessManager)
     , m_crashReporter(crashReporter)
     , m_attachmentBuilder(settings)
     , m_messageModel(this)
     , m_chatsModel(this)
     , m_database(new VSQDatabase(settings, nullptr))
     , m_databaseThread(new QThread())
-    , m_client(new VSQClient(settings, nullptr))
+    , m_client(new VSQClient(settings, networkAccessManager, nullptr))
     , m_clientThread(new QThread())
 {
     m_database->moveToThread(m_databaseThread);
@@ -129,7 +130,6 @@ void VSQMessenger::setupConnections()
     connect(m_client, &VSQClient::addContactFailed, this, &VSQMessenger::addContactFailed);
     // Contacts status: client-to-models
     connect(m_client, &VSQClient::contactAdded, &m_chatsModel, &VSQChatsModel::processContact);
-
     // Messages: messenger-to-client
     connect(this, &VSQMessenger::createSendMessage, this, &VSQMessenger::onCreateSendMessage);
     connect(this, &VSQMessenger::sendMessage, m_client, &VSQClient::sendMessage);
@@ -141,9 +141,9 @@ void VSQMessenger::setupConnections()
     // Messages status: client-to-model
     connect(m_client, &VSQClient::messageReceived, &m_messageModel, &VSQMessagesModel::addMessage);
     connect(m_client, &VSQClient::messageSent, &m_messageModel,
-        std::bind(&VSQMessagesModel::setMessageStatus, &m_messageModel, args::_1, Message::Status::Sent));
+        std::bind(&VSQMessagesModel::setMessageStatusById, &m_messageModel, args::_1, Message::Status::Sent));
     connect(m_client, &VSQClient::sendMessageFailed, &m_messageModel,
-        std::bind(&VSQMessagesModel::setMessageStatus, &m_messageModel, args::_1, Message::Status::Failed));
+        std::bind(&VSQMessagesModel::setMessageStatusById, &m_messageModel, args::_1, Message::Status::Failed));
     connect(m_client, &VSQClient::messageDelivered, &m_messageModel,
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messageModel, args::_1, Message::Status::Received));
 
@@ -151,7 +151,7 @@ void VSQMessenger::setupConnections()
     connect(m_client, &VSQClient::uploadStarted, &m_messageModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messageModel, args::_1, false));
     connect(m_client, &VSQClient::uploadProgressChanged, &m_messageModel, &VSQMessagesModel::setUploadProgress);
-    connect(m_client, &VSQClient::uploaded, &m_messageModel,
+    connect(m_client, &VSQClient::uploadFinished, &m_messageModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messageModel, args::_1, false));
     connect(m_client, &VSQClient::uploadFailed, &m_messageModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messageModel, args::_1, true));
@@ -200,12 +200,9 @@ VSQChatsModel *VSQMessenger::chatsModel()
 
 void VSQMessenger::onCreateSendMessage(const QString &text, const QVariant &attachmentUrl, const Enums::AttachmentType attachmentType)
 {
-    // Create message
     const QString uuid = VSQUtils::createUuid();
     QString messageText = text;
     const auto attachment = m_attachmentBuilder.build(attachmentUrl.toUrl(), attachmentType);
-    if (attachment)
-        messageText = attachment->fileName();
     const Message message {
         uuid,
         QDateTime::currentDateTime(),
@@ -215,6 +212,6 @@ void VSQMessenger::onCreateSendMessage(const QString &text, const QVariant &atta
         attachment,
         Message::Status::Created
     };
-    // Emit
+
     emit sendMessage(message);
 }

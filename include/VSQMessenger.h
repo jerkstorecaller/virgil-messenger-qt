@@ -43,6 +43,7 @@
 #include "models/VSQChatsModel.h"
 #include "models/VSQMessagesModel.h"
 
+class QNetworkAccessManager;
 class QThread;
 
 class VSQClient;
@@ -59,7 +60,7 @@ class VSQMessenger : public QObject
     Q_PROPERTY(VSQChatsModel *chats READ chatsModel CONSTANT)
 
 public:
-    explicit VSQMessenger(VSQSettings *settings, VSQCrashReporter *crashReporter, QObject *parent = nullptr);
+    explicit VSQMessenger(VSQSettings *settings, QNetworkAccessManager *networkAccessManager, VSQCrashReporter *crashReporter, QObject *parent = nullptr);
     ~VSQMessenger() override;
 
     Q_INVOKABLE void start();
@@ -68,22 +69,22 @@ signals:
     void signIn(const QString &userWithEnv);
     void signInWithKey(const QString &userWithEnv, const QString &password);
     void signedIn(const QString &userWithEnv);
-    void signInFailed(const QString &userWithEnv, const QString &error);
+    void signInFailed(const QString &userWithEnv, const QString &errorText);
 
     void signOut();
     void signedOut();
 
     void signUp(const QString &userWithEnv);
     void signedUp(const QString &userWithEnv);
-    void signUpFailed(const QString &userWithEnv, const QString &error);
+    void signUpFailed(const QString &userWithEnv, const QString &errorText);
 
     void backupKey(const QString &password);
     void keyBackuped(const QString &password);
-    void backupKeyFailed(const QString &password, const QString &error);
+    void backupKeyFailed(const QString &password, const QString &errorText);
 
     void addContact(const QString &contact);
     void contactAdded(const QString &contact);
-    void addContactFailed(const QString &contact, const QString &error);
+    void addContactFailed(const QString &contact, const QString &errorText);
 
     void createSendMessage(const QString &text, const QVariant &attachmentUrl, const Enums::AttachmentType attachmentType);
     void sendMessage(const Message &message);
@@ -110,6 +111,7 @@ private:
     void onCreateSendMessage(const QString &text, const QVariant &attachmentUrl, const Enums::AttachmentType attachmentType);
 
     VSQSettings *m_settings;
+    QNetworkAccessManager *m_networkAccessManager;
     VSQCrashReporter *m_crashReporter;
     VSQAttachmentBuilder m_attachmentBuilder;
     VSQMessagesModel m_messageModel;

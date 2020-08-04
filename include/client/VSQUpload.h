@@ -32,51 +32,54 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-#ifndef VSQ_UPLOADER_H
-#define VSQ_UPLOADER_H
+#ifndef VSQ_UPLOAD_H
+#define VSQ_UPLOAD_H
 
 #include <QObject>
+#include <QNetworkReply>
+
+#include <QXmppHttpUploadIq.h>
 
 #include "VSQCommon.h"
-#include "VSQUpload.h"
 
 class QNetworkAccessManager;
 
-class QXmppClient;
-class QXmppUploadRequestManager;
-
 Q_DECLARE_LOGGING_CATEGORY(lcUploader);
 
-class VSQUploader : public QObject
+class VSQUpload : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit VSQUploader(QXmppClient *client, QNetworkAccessManager *networkAccessManager, QObject *parent);
-    ~VSQUploader() override;
+    VSQUpload(QNetworkAccessManager *networkAccessManager, const QString &messageId, const Attachment &attachment, QObject *parent);
+    ~VSQUpload() override;
 
-    void addUpload(const QString &messageId, const Attachment &attachment);
+    QString messageId() const;
+    Attachment attachment() const;
+
+    void setSlotId(const QString &id);
+    QString slotId() const;
+
+    void start(const QXmppHttpUploadSlotIq &slot);
+    void abort();
 
 signals:
-    void uploadStarted(const QString &messageId);
-    void uploadProgressChanged(const QString &messageId, DataSize bytesReceived, DataSize bytesTotal);
-    void uploadFinished(const QString &messageId);
-    void uploadFailed(const QString &messageId, const QString &errorText);
+    void progressChanged(DataSize bytesReceived, DataSize bytesTotal);
+    void finished();
+    void failed(const QString &errorText);
 
 private:
-    void onSlotReceived(const QXmppHttpUploadSlotIq &slot);
-    void onRequestFailed(const QXmppHttpUploadRequestIq &request);
+    void onNetworkReplyError(QNetworkReply::NetworkError error, QNetworkReply *reply);
+    void cleanupReply(QNetworkReply *reply);
 
-    void onUploadProgressChanged(VSQUpload *upload, DataSize bytesReceived, DataSize bytesTotal);
-    void onUploadFinished(VSQUpload *upload);
-    void onUploadFailed(VSQUpload *upload, const QString &errorText);
-
-    void startNextUpload();
+    QString toString() const;
 
     QNetworkAccessManager *m_networkAccessManager;
-    std::unique_ptr<QXmppUploadRequestManager> m_xmppManager;
-    std::vector<VSQUpload *> m_uploads;
-    int m_activeUploadsCount;
+    QString m_messageId;
+    Attachment m_attachment;
+
+    QString m_slotId;
+    bool m_running;
 };
 
-#endif // VSQ_UPLOADER_H
+#endif // VSQ_UPLOAD_H

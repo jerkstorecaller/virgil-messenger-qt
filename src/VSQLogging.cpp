@@ -34,8 +34,6 @@
 
 #include "VSQLogging.h"
 
-#include <QMutex>
-
 #include <virgil/iot/logger/logger.h>
 
 using namespace VirgilIoTKit;
@@ -58,13 +56,6 @@ VSQLogging::~VSQLogging()
     m_instance = nullptr;
 }
 
-VSQLogging *VSQLogging::instance()
-{
-    if (!m_instance)
-        qFatal("Instance of logging doesn't exist!");
-    return m_instance;
-}
-
 void VSQLogging::installMessageHandler()
 {
     qInstallMessageHandler(&VSQLogging::staticHandler);
@@ -73,16 +64,15 @@ void VSQLogging::installMessageHandler()
 #endif
 }
 
-void VSQLogging::staticHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void VSQLogging::staticHandler(QtMsgType type, const QMessageLogContext &context, const QString &message)
 {
-    static QMutex mutex;
-    QMutexLocker locker(&mutex);
+    QMutexLocker locker(&m_instance->m_mutex);
 
 #ifdef VS_DEVMODE
-    emit m_instance->newMessage(QString("[%1] %2").arg(context.category).arg(msg));
+    emit m_instance->newMessage(QString("[%1] %2").arg(context.category).arg(message));
 #endif
 
-    const QByteArray localMsg = msg.toLocal8Bit();
+    const QByteArray localMsg = message.toLocal8Bit();
     switch (type) {
     case QtDebugMsg:
         vs_logger_message(VS_LOGLEV_DEBUG, context.file, context.line, localMsg.constData());

@@ -54,14 +54,16 @@
 
 Q_LOGGING_CATEGORY(lcApplication, "application")
 
-VSQApplication::VSQApplication(int &argc, char **argv)
+VSQApplication::VSQApplication(VSQLogging *logging, int &argc, char **argv)
     : ApplicationBase(argc, argv)
+    , m_logging(logging)
+    , m_networkAccessManager(new QNetworkAccessManager(this))
 {
     setupCore();
 
     m_settings = new VSQSettings(this);
-    m_crashReporter = new VSQCrashReporter(m_settings, this);
-    m_messenger = new VSQMessenger(m_settings, m_crashReporter, this);
+    m_crashReporter = new VSQCrashReporter(m_settings, m_networkAccessManager, this);
+    m_messenger = new VSQMessenger(m_settings, m_networkAccessManager, m_crashReporter, this);
     m_engine = new VSQQmlEngine(argc, argv, this);
 
     setupFonts();
@@ -125,8 +127,8 @@ void VSQApplication::setupCore()
     if (!VSQIoTKitFacade::instance().init(VSQFeatures(), VSQImplementations(), appConfig))
         qCCritical(lcApplication) << "Unable to initialize Virgil IoT KIT";
 
-    VSQLogging::instance()->installMessageHandler();
-    connect(VSQLogging::instance(), &VSQLogging::fatal, this, &VSQApplication::quit);
+    m_logging->installMessageHandler();
+    connect(m_logging, &VSQLogging::fatal, this, &VSQApplication::quit);
 }
 
 void VSQApplication::setupFonts()
@@ -155,7 +157,7 @@ void VSQApplication::setupEngine()
     context->setContextProperty("messenger", m_messenger);
     context->setContextProperty("settings", m_settings);
     context->setContextProperty("crashReporter", m_crashReporter);
-    context->setContextProperty("logging", VSQLogging::instance());
+    context->setContextProperty("logging", m_logging);
 
     reloadQml();
 }

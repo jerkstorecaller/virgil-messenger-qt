@@ -43,15 +43,13 @@
 #include <QtGlobal>
 #include <QUrl>
 
-#include <QXmppMessage.h>
-
 #include <optional/optional.hpp>
 
 namespace args {
     using namespace std::placeholders;
 }
 
-using DataSize = unsigned int;
+using DataSize = qint64;
 Q_DECLARE_METATYPE(DataSize);
 
 template <class Type>
@@ -112,17 +110,11 @@ struct Attachment
     QUrl local_url;
     QUrl local_preview;
     DataSize size = 0;
-    DataSize uploaded = 0;
+    DataSize bytesUploaded = 0;
     bool loadingFailed = false;
 
-    QString fileName() const
-    {
-        if (!local_url.isEmpty())
-            return local_url.fileName();
-        if (!remote_url.isEmpty())
-            return remote_url.fileName();
-        return QLatin1String();
-    }
+    QString filePath() const;
+    QString fileName() const;
 };
 
 using OptionalAttachment = Optional<Attachment>;
@@ -152,16 +144,6 @@ struct Chat
     int unreadMessageCount;
 };
 Q_DECLARE_METATYPE(Chat);
-
-// FIXME(fpohtmeh): remove this workaround
-struct ExtMessage : Message
-{
-    ExtMessage() : Message() {}
-    explicit ExtMessage(const Message &message) : Message((message)) {}
-
-    QXmppMessage xmpp;
-};
-Q_DECLARE_METATYPE(ExtMessage);
 
 void registerCommonTypes();
 

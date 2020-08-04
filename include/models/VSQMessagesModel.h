@@ -72,8 +72,8 @@ public:
     void setMessageStatus(const Message &message, const Message::Status status);
     void setMessageStatusById(const QString &messageId, const Message::Status status);
 
-    void setUploadProgress(const Message &message, DataSize uploaded);
-    void setUploadFailed(const Message &message, bool failed);
+    void setUploadProgress(const QString &messageId, DataSize bytesUploaded);
+    void setUploadFailed(const QString &messageId, bool failed);
 
     void setUser(const QString &user);
     void setRecipient(const QString &recipient);

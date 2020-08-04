@@ -60,9 +60,9 @@ void VSQMessagesModel::setMessageStatusById(const QString &messageId, const Mess
         setMessageStatusByRow(*row, status);
 }
 
-void VSQMessagesModel::setUploadProgress(const Message &message, DataSize uploaded)
+void VSQMessagesModel::setUploadProgress(const QString &messageId, DataSize bytesUploaded)
 {
-    const auto messageRow = findMessageRow(message.id);
+    const auto messageRow = findMessageRow(messageId);
     if (!messageRow) {
         qCCritical(lcMessagesModel) << "Upload progress can't be changed, message doesn't exist";
         return;
@@ -73,15 +73,15 @@ void VSQMessagesModel::setUploadProgress(const Message &message, DataSize upload
         qCCritical(lcMessagesModel) << "Upload progress can't be set, attachment is empty";
         return;
     }
-    if (msg.attachment->uploaded == uploaded)
+    if (msg.attachment->bytesUploaded == bytesUploaded)
         return;
-    msg.attachment->uploaded = uploaded;
+    msg.attachment->bytesUploaded = bytesUploaded;
     emit dataChanged(index(row), index(row), { AttachmentUploadedRole });
 }
 
-void VSQMessagesModel::setUploadFailed(const Message &message, bool failed)
+void VSQMessagesModel::setUploadFailed(const QString &messageId, bool failed)
 {
-    const auto messageRow = findMessageRow(message.id);
+    const auto messageRow = findMessageRow(messageId);
     if (!messageRow) {
         qCCritical(lcMessagesModel) << "Upload failed flag can't be changed, message doesn't exist";
         return;
@@ -184,8 +184,8 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
         return message.attachment ? message.attachment->local_url : QString();
     case AttachmentLocalPreviewRole:
         return message.attachment ? message.attachment->local_preview : QString();
-    case AttachmentUploadedRole:
-        return message.attachment ? message.attachment->uploaded : 0;
+    case AttachmentUploadedRole: // TODO(fpohtmeh): rename to bytesUploaded
+        return message.attachment ? message.attachment->bytesUploaded : 0;
     case AttachmentLoadingFailedRole:
         return message.attachment ? message.attachment->loadingFailed : 0;
     default:

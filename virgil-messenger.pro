@@ -99,6 +99,7 @@ HEADERS += \
         # Client
         include/client/VSQClient.h \
         include/client/VSQCore.h \
+        include/client/VSQUpload.h \
         include/client/VSQUploader.h \
         # Models
         include/models/VSQAttachmentBuilder.h \
@@ -131,6 +132,7 @@ SOURCES += \
         # Client
         src/client/VSQClient.cpp \
         src/client/VSQCore.cpp \
+        src/client/VSQUpload.cpp \
         src/client/VSQUploader.cpp \
         # Models
         src/models/VSQAttachmentBuilder.cpp \

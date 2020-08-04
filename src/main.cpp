@@ -52,6 +52,6 @@ int main(int argc, char *argv[])
 
     VSQLogging logging;
     VSQApplication::initialize();
-    VSQApplication app(argc, argv);
+    VSQApplication app(&logging, argc, argv);
     return app.exec();
 }
