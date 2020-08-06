@@ -32,47 +32,26 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-#ifndef VIRGIL_IOTKIT_QT_SQL_CHAT_MODEL_H
-#define VIRGIL_IOTKIT_QT_SQL_CHAT_MODEL_H
+#include "VSQUtils.h"
 
-#include <QSqlTableModel>
+#include <QLocale>
+#include <QUuid>
 
-class VSQSqlChatModel : public QSqlTableModel {
-    Q_OBJECT
+QString VSQUtils::createUuid()
+{
+    return QUuid::createUuid().toString(QUuid::WithoutBraces).toLower();
+}
 
-public:
-    VSQSqlChatModel(QObject *parent = nullptr);
+QString VSQUtils::formattedDataSize(DataSize fileSize)
+{
+    static QLocale locale = QLocale::system();
+    return locale.formattedDataSize(fileSize);
+}
 
-    void
-    init(const QString &userId);
-
-    QVariant
-    data(const QModelIndex &index, int role) const override;
-
-    QHash<int, QByteArray>
-    roleNames() const override;
-
-    void
-    createPrivateChat(const QString &recipientId);
-
-    Q_INVOKABLE void
-    updateLastMessage(QString chatId, QString message);
-
-    Q_INVOKABLE void
-    updateUnreadMessageCount(QString chatId);
-
-    Q_INVOKABLE void
-    applyFilter(const QString &filter);
-
-    Q_INVOKABLE void
-    clearFilter();
-
-    Q_INVOKABLE void
-    refresh();
-
-private:
-    QString m_userId;
-    QString m_tableName;
-};
-
-#endif // VIRGIL_IOTKIT_QT_SQL_CHAT_MODEL_H
+QString VSQUtils::escapedUserName(const QString &userName)
+{
+    static QRegExp regexp("[^a-z0-9_]");
+    QString name(userName);
+    name.remove(regexp);
+    return name;
+}

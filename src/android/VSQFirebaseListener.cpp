@@ -32,6 +32,8 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
+#if (VS_ANDROID)
+
 #include "android/VSQFirebaseListener.h"
 
 #include <QtAndroid>
@@ -113,10 +115,12 @@ VSQFirebaseListener::OnMessage(const ::firebase::messaging::Message &message) {
 #if 0
     const QString sender = QString::fromStdString(mes.data["title"]);
     const QString ciphertext = QString::fromStdString(mes.data["ciphertext"]);
-    const QString decryptedMessage = VSQMessenger::decryptMessage(sender, ciphertext);
+    const QString decryptedMessage = Messenger::decryptMessage(sender, ciphertext);
 
     showNotification(sender, decryptedMessage);
 #endif
 }
 
 /******************************************************************************/
+
+#endif // VS_ANDROID

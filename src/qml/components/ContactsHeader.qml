@@ -86,13 +86,11 @@ ToolBar {
             // visible: menu.length
             opacity: menu.length ? 1 : 0
             enabled: menu.length
-            onClicked: {
-                contextMenu.currentIndex = -1
-                contextMenu.open()
-            }
+            onClicked: contextMenu.open()
 
             ContextMenu {
                 id: contextMenu
+                dropdown: true
             }
         }
     }

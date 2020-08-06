@@ -4,6 +4,7 @@ import QtQuick.Controls 2.12
 import QuickFuture 1.0
 import QtQuick.Window 2.12
 import QtMultimedia 5.12
+import com.virgilsecurity.messenger 1.0
 
 import "../theme"
 import "../components"
@@ -30,7 +31,7 @@ Page {
             Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
-                anchors.right: parent.right                
+                anchors.right: parent.right
                 anchors.leftMargin: 20
                 anchors.rightMargin: 20
                 height: 1
@@ -52,7 +53,7 @@ Page {
                 Layout.fillWidth: true
                 Layout.leftMargin: 10
                 Label {
-                    text: ConversationsModel.recipient
+                    text: messenger.recipient
                     font.pointSize: UiHelper.fixFontSz(15)
                     color: Theme.primaryTextColor
                     font.bold: true
@@ -82,16 +83,26 @@ Page {
         }
 
         spacing: 5
-        // verticalLayoutDirection: ListView.BottomToTop
-        // model: ConversationsModel
+        model: messenger.messages
         delegate: ChatMessage {
-            text: message
-            author: model.author
-            timeStamp: model.timestamp
-            variant: model.author === Messenger.currentUser ? "light" : "dark"
-            messageInARow: model.messageInARow
-            firstMessageInARow: model.firstMessageInARow
-            status: model.author !== Messenger.currentUser ? "none" : model.status
+            body: model.body
+            time: model.time
+            nickname: model.nickname
+            isUser: model.isUser
+            status: model.status
+            failed: model.failed
+
+            inRow: model.inRow
+            firstInRow: model.firstInRow
+
+            attachmentId: model.attachmentId
+            attachmentSize: model.attachmentSize
+            attachmentDisplaySize: model.attachmentDisplaySize
+            attachmentType: model.attachmentType
+            attachmentLocalUrl: model.attachmentLocalUrl
+            attachmentLocalPreview: model.attachmentLocalPreview
+            attachmentUploaded: model.attachmentUploaded
+            attachmentLoadingFailed: model.attachmentLoadingFailed
         }
 
         onCountChanged: {
@@ -111,26 +122,7 @@ Page {
 
     footer: ChatMessageInput {
         id: footerControl
-        onMessageSending: {
-            var future = Messenger.sendMessage(ConversationsModel.recipient, message)
-            Future.onFinished(future, function(value) {
-              messageSent.play()
-            })
-        }
-    }
-
-
-    // Component events
-
-    Component.onCompleted: {
-
-        // configure conversation model to chat with
-        // recipient provided as a parameter to this page.
-
-        ConversationsModel.recipient = recipient
-        listView.model = ConversationsModel
-        ConversationsModel.setAsRead(recipient)
-        ChatModel.updateUnreadMessageCount(recipient)
+        onMessageSending: messenger.createSendMessage(message, attachmentUrl, attachmentType)
     }
 
     // Sounds
@@ -143,6 +135,12 @@ Page {
     SoundEffect {
         id: messageSent
         source: "../resources/sounds/message-sent.wav"
+    }
+
+    Connections {
+        target: messenger
+        onMessageSent: messageSent.play
+        onSendMessageFailed: messageSent.play
     }
 }
 

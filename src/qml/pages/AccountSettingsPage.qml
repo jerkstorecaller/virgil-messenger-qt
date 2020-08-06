@@ -22,7 +22,7 @@ Page {
         Avatar {
             Layout.alignment: Qt.AlignHCenter
             diameter: 80
-            nickname: Messenger.currentUser
+            nickname: messenger.user
         }
 
         Label {
@@ -30,45 +30,26 @@ Page {
             Layout.bottomMargin: 50
             font.pointSize: UiHelper.fixFontSz(18)
             color: Theme.primaryTextColor
-            text: Messenger.currentUser
+            text: messenger.user
         }
 
         FormLabel {
             text: qsTr("Version: %1".arg(app.currentVersion()))
         }
-/*
+
         FormPrimaryButton {
-            text: "Software Update"
-            onClicked: {
-                app.checkUpdates()
-            }
+            text: "Backup private key"
+            onClicked: mainView.showBackupKey()
         }
 
         FormPrimaryButton {
-            text: "Delete Account"
-            onClicked: {
-            }
-        }
-*/
-        FormPrimaryButton {
-            text: "Backup private key"
-            onClicked: {
-                mainView.showBackupKey()
-            }
-        }
-/*
-        FormPrimaryButton {
             text: "Send report"
-            onClicked: {
-                app.sendReport()
-            }
+            onClicked: crashReporter.send()
         }
-*/
+
         FormPrimaryButton {
             text: "Sign out"
-            onClicked: {
-                mainView.signOut()
-            }
+            onClicked: messenger.signOut()
         }
     }
 }

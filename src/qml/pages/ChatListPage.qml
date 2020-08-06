@@ -52,7 +52,6 @@ import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
 import QuickFuture 1.0
-import MesResult 1.0
 
 import "../theme"
 import "../components"
@@ -85,30 +84,19 @@ Page {
             text: qsTr("New Chat")
             onTriggered: addContact()
         }
-/*
-        Action {
-            text: qsTr("New Group")
-            // onTriggered: addContact()
-        }
-
-        Action {
-            text: qsTr("Send Invite")
-            // onTriggered: addContact()
-        }
-*/
     }
 
     ListView {
         id: listView
         anchors.fill: parent
-        model: ChatModel
+        model: messenger.chats
         delegate: ItemDelegate {
             id: listItem
             width: parent.width
             leftInset: 8
             rightInset: 8
             background: Rectangle {
-                color: listItem.down ? Theme.contactPressedColor : "Transparent"
+                color: listItem.down ? Theme.contactPressedColor : "transparent"
                 radius: 6
             }
             contentItem: RowLayout {
@@ -120,7 +108,7 @@ Page {
 
                 Avatar {
                     id: avatar
-                    nickname: model.name
+                    nickname: model.nickname
                 }
 
                 Column {
@@ -129,13 +117,13 @@ Page {
                     Text {
                         color: Theme.primaryTextColor
                         font.pointSize: UiHelper.fixFontSz(15)
-                        text: model.name
+                        text: model.nickname
                     }
 
                     Text {
                         color: Theme.secondaryTextColor
                         font.pointSize: UiHelper.fixFontSz(12)
-                        text: model.lastMessage ? model.lastMessage.substring(0, 30) : "..."
+                        text: model.lastMessageBody
                         width: parent.width
                         elide: Text.ElideRight
                         textFormat: Text.RichText
@@ -147,12 +135,12 @@ Page {
                     spacing: 5
 
                     MessageCounter {
-                       count: model.unreadMessageCount
+                       count: model.unreadMessagesCount
                        anchors.horizontalCenter: parent.horizontalCenter
                     }
 
                     Text {
-                        text: model.lastMessageTime ? Qt.formatDateTime(model.lastMessageTime, "hh:mm")   : ""
+                        text: model.lastEventTime
                         color: Theme.secondaryTextColor
                         font.pointSize: UiHelper.fixFontSz(9)
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -161,7 +149,7 @@ Page {
             }
 
             onClicked: {
-                mainView.showChatWith(model.name)
+                mainView.showChatWith(model.nickname) // TODO(fpohtmeh): remove mainView
             }
         }
 
@@ -187,8 +175,8 @@ Page {
                 if (!contactsHeaderId.isSearchOpen) return conversationText;
                 if (contactsHeaderId.search !== '') return searchEmptyText;
                 return searchText;
-            }            
-        }        
+            }
+        }
 
         MouseArea {
             visible: !listView.contentItem.children.length
@@ -206,38 +194,25 @@ Page {
     //
     //  Functions
     //
-    function setAsRead(user) {
-        // ConversationsModel.setAsRead(user);
-        console.log("setAsRead func");
-    }
-
     function addContact() {
         var component = Qt.createComponent("../components/Dialogs/AddContactDialog.qml")
         if (component.status === Component.Ready) {
-            var dialog = component.createObject(root)
+            var dialog = component.createObject(window)
             var apply = function() {
-                try {
-                    var future = Messenger.addContact(dialog.contact.toLowerCase())
-                    Future.onFinished(future, function(value) {
-                        var res = Future.result(future)
-                        if (res === Result.MRES_OK) {
-                            mainView.showChatWith(dialog.contact)
-                            return
-                        }
-
-                        root.showPopupError(qsTr("User not found"))
-                    })
-                } catch (error) {
-                    console.error("Cannot start initialization of device")
-                }
-                dialog.close()
+                messenger.addContact(dialog.contact.toLowerCase())
+                dialog.close() // TODO(fpohtmeh): remove?
             }
             dialog.applied.connect(apply)
             dialog.accepted.connect(apply)
             dialog.open()
-            return dialog
+            return
         }
-        console.error(component.errorString())
-        return null
+        console.error("Component error:", component.errorString())
+    }
+
+    Connections {
+        target: messenger
+        onContactAdded: mainView.showChatWith(contact) // TODO(fpohtmeh): remove mainView
+        onAddContactFailed: window.showPopupError(error)
     }
 }

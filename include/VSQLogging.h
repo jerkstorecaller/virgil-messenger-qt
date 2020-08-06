@@ -32,50 +32,32 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-
 #ifndef VSQLOGGING_H
 #define VSQLOGGING_H
 
-#include <iostream>
-#include <string>
-#include <QCoreApplication>
-#include <virgil/iot/qt/VSQIoTKit.h>
+#include <QObject>
 
-using namespace VirgilIoTKit;
+#include "VSQCommon.h"
 
-void logger_qt_redir(QtMsgType type, const QMessageLogContext &context, const QString &msg);
-
-class VSQLogging : public QObject {
+class VSQLogging : public QObject
+{
     Q_OBJECT
+
 public:
-    virtual ~VSQLogging();
-    void checkAppCrash();
-    void resetRunFlag();
-    Q_INVOKABLE
-    bool sendLogFiles();
-    void setVirgilUrl(QString VirgilUrl);
-    void setkVersion(QString AppVersion);
-    void setkOrganization(QString strkOrganization);
-    void setkApp(QString strkApp);
+    VSQLogging();
+    ~VSQLogging() override;
+
+    static VSQLogging *instance();
+    void installMessageHandler();
 
 signals:
-    void crashReportRequested();
+    void newMessage(const QString &);
+    void fatal();
 
 private:
-    static const QString endpointSendReport;
+    static void staticHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
 
-
-    bool checkRunFlag();
-    bool sendFileToBackendRequest(QByteArray fileData);
-    void setRunFlag(bool runState);
-    QString currentVirgilUrl;
-    QString kVersion;
-    QString kOrganization;
-    QString kApp;
-    QNetworkAccessManager *manager;
-
-private slots:
-    void endpointReply();
+    static VSQLogging *m_instance;
 };
 
 #endif // VSQLOGGING_H

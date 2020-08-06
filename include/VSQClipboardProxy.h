@@ -32,8 +32,8 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-#ifndef VSQCLIPBOARDPROXY_H
-#define VSQCLIPBOARDPROXY_H
+#ifndef VSQ_CLIPBOARDPROXY_H
+#define VSQ_CLIPBOARDPROXY_H
 
 #include <QObject>
 
@@ -43,8 +43,9 @@ class VSQClipboardProxy : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
+
 public:
-    explicit VSQClipboardProxy(QClipboard*);
+    explicit VSQClipboardProxy(QClipboard *clipboard);
 
     QString text() const;
 
@@ -58,4 +59,4 @@ private:
     QClipboard* clipboard;
 };
 
-#endif // VSQCLIPBOARDPROXY_HPP
+#endif // VSQ_CLIPBOARDPROXY_HPP

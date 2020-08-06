@@ -76,6 +76,7 @@ DEFINES += QT_DEPRECATED_WARNINGS \
         VERSION="$$VERSION"
 
 CONFIG(iphoneos, iphoneos | iphonesimulator) {
+    # FIXME(fpohtmeh): remove? We already have IOS section
     DEFINES += VS_IOS=1
 }
 
@@ -86,28 +87,58 @@ CONFIG(iphoneos, iphoneos | iphonesimulator) {
 HEADERS += \
         include/VSQApplication.h \
         include/VSQClipboardProxy.h \
+        include/VSQCommon.h \
+        include/VSQCrashReporter.h \
         include/VSQLogging.h \
         include/VSQMessenger.h \
-        include/VSQSqlChatModel.h \
-        include/VSQSqlConversationModel.h \
+        include/VSQQmlEngine.h \
+        include/VSQSettings.h \
+        include/VSQUtils.h \
+        include/ui/VSQUiHelper.h \
+        # Client
+        include/client/VSQClient.h \
+        include/client/VSQCore.h \
+        include/client/VSQUploader.h \
+        # Models
+        include/models/VSQAttachmentBuilder.h \
+        include/models/VSQChatsModel.h \
+        include/models/VSQMessagesModel.h \
+        # Database
+        include/database/VSQDatabase.h \
+        # Platforms
         include/android/VSQAndroid.h \
         include/macos/VSQMacos.h \
-        include/ui/VSQUiHelper.h
+        # Thirdparty
+        include/thirdparty/optional/optional.hpp
 
 #
 #   Sources
 #
 
 SOURCES += \
-        src/VSQClipboardProxy.cpp \
-        src/VSQMessenger.cpp \
-        src/VSQLogging.cpp \
-        src/VSQSqlChatModel.cpp \
-        src/VSQSqlConversationModel.cpp \
-        src/android/VSQAndroid.cpp \
         src/main.cpp \
         src/VSQApplication.cpp \
-        src/ui/VSQUiHelper.cpp
+        src/VSQClipboardProxy.cpp \
+        src/VSQCommon.cpp \
+        src/VSQCrashReporter.cpp \
+        src/VSQLogging.cpp \
+        src/VSQMessenger.cpp \
+        src/VSQQmlEngine.cpp \
+        src/VSQSettings.cpp \
+        src/VSQUtils.cpp \
+        src/ui/VSQUiHelper.cpp \
+        # Client
+        src/client/VSQClient.cpp \
+        src/client/VSQCore.cpp \
+        src/client/VSQUploader.cpp \
+        # Models
+        src/models/VSQAttachmentBuilder.cpp \
+        src/models/VSQChatsModel.cpp \
+        src/models/VSQMessagesModel.cpp \
+        # Database
+        src/database/VSQDatabase.cpp \
+        # Platforms
+        src/android/VSQAndroid.cpp
 
 #
 #   Resources
@@ -120,9 +151,11 @@ RESOURCES += src/resources.qrc
 #
 
 
-INCLUDEPATH +=  include \
-        $${QXMPP_BUILD_PATH}/include \
-         $${QXMPP_BUILD_PATH}/include/qxmpp
+INCLUDEPATH += \
+    include \
+    include/thirdparty \
+    $${QXMPP_BUILD_PATH}/include \
+    $${QXMPP_BUILD_PATH}/include/qxmpp
 
 #
 #   Sparkle framework
@@ -157,9 +190,9 @@ isEmpty(WEBDRIVER) {
     debug:QTWEBDRIVER_LOCATION=$$PWD/ext/prebuilt/$${OS_NAME}/debug/installed/usr/local/include/qtwebdriver
     HEADERS += $$QTWEBDRIVER_LOCATION/src/Test/Headers.h
     INCLUDEPATH +=  $$QTWEBDRIVER_LOCATION $$QTWEBDRIVER_LOCATION/src
-    linux:!android: { 
+    linux:!android: {
         LIBS += -ldl -Wl,--start-group -lchromium_base -lWebDriver_core -lWebDriver_extension_qt_base -lWebDriver_extension_qt_quick -Wl,--end-group
-    }    
+    }
     macx: {
         LIBS += -lchromium_base -lWebDriver_core -lWebDriver_extension_qt_base -lWebDriver_extension_qt_quick
         LIBS += -framework Foundation
@@ -191,24 +224,51 @@ DEPENDPATH += $${INCLUDEPATH}
 message("ANDROID_TARGET_ARCH = $$ANDROID_TARGET_ARCH")
 
 #
+#   Linux specific
+#
+linux {
+    DEFINES += VS_LINUX=1 VS_DESKTOP=1
+    QT += widgets
+}
+
+#
+#   Windows specific
+#
+
+win32|win64 {
+    DEFINES += VS_WINDOWS=1 VS_DESKTOP=1
+    QT += widgets
+    RC_ICONS = platforms/windows/Virgil.ico
+    DISTFILES += \
+        platforms/windows/Virgil.ico
+}
+
+#
 #   macOS specific
 #
-macx: {
+
+macx {
+    DEFINES += VS_MACOS=1 VS_DESKTOP=1
+    QT += widgets
     ICON = $$PWD/scripts/macos/pkg_resources/MyIcon.icns
     QMAKE_INFO_PLIST = $$PWD/platforms/macos/virgil-messenger.plist
+    DISTFILES += \
+        platforms/macos/virgil-messenger.plist.in
 }
 
 #
 #   iOS specific
 #
-#ios: {
+
+ios {
+    DEFINES += VS_IOS=1 VS_MOBILE=1
 #    OBJECTIVE_SOURCES += \
 #        src/ios/APNSApplicationDelegate.mm
 
 #    #IOS_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
 #    #IOS_ENTITLEMENTS.value = ios/pushnotifications.entitlements
 #    QMAKE_MAC_XCODE_SETTINGS += IOS_ENTITLEMENTS
-#}
+}
 
 isEqual(OS_NAME, "ios")|isEqual(OS_NAME, "ios-sim"): {
     Q_ENABLE_BITCODE.name = ENABLE_BITCODE
@@ -238,9 +298,10 @@ defineReplace(AndroidVersionCode) {
         return($$first(vCode))
 }
 
-android: {
+android {
     QT += androidextras
-    DEFINES += VS_ANDROID=1 VS_PUSHNOTIFICATIONS=1
+    DEFINES += VS_ANDROID=1 VS_PUSHNOTIFICATIONS=1 VS_MOBILE=1
+
     ANDROID_VERSION_CODE = $$AndroidVersionCode($$VERSION)
     ANDROID_VERSION_NAME = $$VERSION
 
@@ -255,7 +316,7 @@ android: {
         src/android/VSQFirebaseListener.cpp
 
     release:LIBS_DIR = $$PWD/ext/prebuilt/$${OS_NAME}/release/installed/usr/local/lib
-    debug:LIBS_DIR = $$PWD/ext/prebuilt/$${OS_NAME}/release/installed/usr/local/lib
+    debug:LIBS_DIR = $$PWD/ext/prebuilt/$${OS_NAME}/release/installed/usr/local/lib # TODO(fpohtmeh): debug folder must be specified
     FIREBASE_LIBS_DIR = $$PWD/ext/prebuilt/firebase_cpp_sdk/libs/android/$$ANDROID_TARGET_ARCH/c++
     ANDROID_EXTRA_LIBS = \
         $$LIBS_DIR/libvs-messenger-internal.so \
@@ -279,32 +340,27 @@ android: {
         platforms/android/gradlew \
         platforms/android/gradlew.bat \
         platforms/android/res/values/libs.xml \
-        platforms/android/src/org/virgil/notification/NotificationClient.java
+        platforms/android/src/org/virgil/notification/NotificationClient.java \
+        # Resources
+        platforms/android/res/drawable-hdpi/icon.png \
+        platforms/android/res/drawable-hdpi/icon_round.png \
+        platforms/android/res/drawable-ldpi/icon.png \
+        platforms/android/res/drawable-ldpi/icon_round.png \
+        platforms/android/res/drawable-mdpi/icon.png \
+        platforms/android/res/drawable-mdpi/icon_round.png \
+        platforms/android/res/drawable-xhdpi/icon.png \
+        platforms/android/res/drawable-xhdpi/icon_round.png \
+        platforms/android/res/drawable-xxhdpi/icon.png \
+        platforms/android/res/drawable-xxhdpi/icon_round.png \
+        platforms/android/res/drawable-xxxhdpi/icon.png \
+        platforms/android/res/drawable-xxxhdpi/icon_round.png \
+        platforms/android/res/mipmap-hdpi/ic_launcher_round.png \
+        platforms/android/res/mipmap-mdpi/ic_launcher.png \
+        platforms/android/res/mipmap-mdpi/ic_launcher_round.png \
+        platforms/android/res/mipmap-xhdpi/ic_launcher.png \
+        platforms/android/res/mipmap-xhdpi/ic_launcher_round.png \
+        platforms/android/res/mipmap-xxhdpi/ic_launcher.png \
+        platforms/android/res/mipmap-xxhdpi/ic_launcher_round.png \
+        platforms/android/res/mipmap-xxxhdpi/ic_launcher.png \
+        platforms/android/res/mipmap-xxxhdpi/ic_launcher_round.png
 }
-
-RC_ICONS = platforms/windows/Virgil.ico
-
-DISTFILES += \
-    platforms/android/res/drawable-hdpi/icon.png \
-    platforms/android/res/drawable-hdpi/icon_round.png \
-    platforms/android/res/drawable-ldpi/icon.png \
-    platforms/android/res/drawable-ldpi/icon_round.png \
-    platforms/android/res/drawable-mdpi/icon.png \
-    platforms/android/res/drawable-mdpi/icon_round.png \
-    platforms/android/res/drawable-xhdpi/icon.png \
-    platforms/android/res/drawable-xhdpi/icon_round.png \
-    platforms/android/res/drawable-xxhdpi/icon.png \
-    platforms/android/res/drawable-xxhdpi/icon_round.png \
-    platforms/android/res/drawable-xxxhdpi/icon.png \
-    platforms/android/res/drawable-xxxhdpi/icon_round.png \
-    platforms/android/res/mipmap-hdpi/ic_launcher_round.png \
-    platforms/android/res/mipmap-mdpi/ic_launcher.png \
-    platforms/android/res/mipmap-mdpi/ic_launcher_round.png \
-    platforms/android/res/mipmap-xhdpi/ic_launcher.png \
-    platforms/android/res/mipmap-xhdpi/ic_launcher_round.png \
-    platforms/android/res/mipmap-xxhdpi/ic_launcher.png \
-    platforms/android/res/mipmap-xxhdpi/ic_launcher_round.png \
-    platforms/android/res/mipmap-xxxhdpi/ic_launcher.png \
-    platforms/android/res/mipmap-xxxhdpi/ic_launcher_round.png \
-    platforms/macos/virgil-messenger.plist.in \
-    platforms/windows/Virgil.ico

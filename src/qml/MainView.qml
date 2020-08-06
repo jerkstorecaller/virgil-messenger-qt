@@ -1,7 +1,6 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
-import Qt.labs.settings 1.1
 import QuickFuture 1.0
 
 import "./theme"
@@ -10,14 +9,12 @@ import "./helpers/login.js" as LoginLogic
 
 Control {
     id: mainView
-    property string lastSignedInUser
-
-    Settings {
-        property alias lastSignedInUser: mainView.lastSignedInUser
-    }
 
     RowLayout {
-        anchors.fill: parent
+        anchors {
+            fill: parent
+            bottomMargin: logControl.visible ? logControl.height : 0
+        }
         spacing: 0
 
         ServersPanel {
@@ -38,7 +35,7 @@ Control {
 
             Action {
                 text: "Sign Out"
-                onTriggered: mainView.signOut()
+                onTriggered: messenger.signOut()
             }
         }
 
@@ -55,8 +52,27 @@ Control {
         }
     }
 
-    Component.onCompleted: {        
+    ScrollView {
+        id: logControl
+        anchors {
+            topMargin: 0.75 * mainView.height
+            fill: parent
+        }
+        visible: settings.devMode
+
+        TextArea {
+            id: logTextControl
+            width: mainView.width
+            wrapMode: Text.WordWrap
+            readOnly: true
+            font.pointSize: 9
+        }
+    }
+
+    Component.onCompleted: {
         showSplashScreen()
+        if (logControl.visible)
+            logging.newMessage.connect(logTextControl.append)
     }
 
     function signIn(user) {
@@ -67,24 +83,11 @@ Control {
             })
 
             stackView.clear()
-            lastSignedInUser = user
+            settings.lastSignedInUser = user
             showContacts()
         } else {
-            root.showPopupError(qsTr("Incorrect User Name"))
+            window.showPopupError(qsTr("Incorrect User Name"))
         }
-    }
-
-    function signOut() {
-        var future = Messenger.logout()
-        Future.onFinished(future, function(value) {
-          console.log("Logout result: ", Future.result(future))
-
-            // clear all pages in the stackview and push sign in page
-            // as a first page in the stack
-            stackView.clear()
-            lastSignedInUser = ""
-            showAuth(true)
-        })
     }
 
     function disconnect() {
@@ -103,8 +106,8 @@ Control {
 
     function back() {
         stackView.pop()
-        if (Messenger.currentRecipient()) {
-            Messenger.setCurrentRecipient("")
+        if (messenger.recipient) {
+            messenger.recipient = ""
         }
     }
 
@@ -143,7 +146,7 @@ Control {
 
     function showChatWith(recipient) {
         navigateTo("Chat", { recipient: recipient }, true, false)
-        Messenger.setCurrentRecipient(recipient)
+        messenger.recipient = recipient
     }
 
     function showContacts(clear) {

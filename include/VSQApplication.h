@@ -32,49 +32,52 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-#ifndef VIRGIL_IOTKIT_QT_DEMO_VSQAPP_H
-#define VIRGIL_IOTKIT_QT_DEMO_VSQAPP_H
+#ifndef VSQ_APPLICATION_H
+#define VSQ_APPLICATION_H
 
-#include <QtCore>
+#ifdef VS_DESKTOP
+#include <QApplication>
+#define ApplicationBase QApplication
+#else
 #include <QGuiApplication>
-#include <QQmlApplicationEngine>
-#include <VSQMessenger.h>
-#include <virgil/iot/qt/netif/VSQUdpBroadcast.h>
-#include <VSQLogging.h>
+#define ApplicationBase QGuiApplication
+#endif
 
-#include <macos/VSQMacos.h>
+#include "VSQCommon.h"
 
-class VSQApplication : public QObject {
+Q_DECLARE_LOGGING_CATEGORY(lcApplication)
+
+class VSQCrashReporter;
+class VSQMessenger;
+class VSQQmlEngine;
+class VSQSettings;
+
+class VSQApplication : public ApplicationBase
+{
     Q_OBJECT
+
 public:
-    VSQApplication();
-    virtual ~VSQApplication() = default;
+    VSQApplication(int &argc, char **argv);
+    virtual ~VSQApplication();
 
-    int
-    run(const QString &basePath);
+    static void initialize();
 
-    Q_INVOKABLE
-    void reloadQml();
-
-    Q_INVOKABLE
-    void checkUpdates();
-
-    Q_INVOKABLE QString
-    currentVersion() const;
-
-    Q_INVOKABLE void
-    sendReport();
-
-
-private slots:
-    void
-    onApplicationStateChanged(Qt::ApplicationState state);
+    Q_INVOKABLE void reloadQml();
+    Q_INVOKABLE void checkUpdates();
+    Q_INVOKABLE QString currentVersion() const;
 
 private:
-    static const QString kVersion;
-    QQmlApplicationEngine m_engine;
-    VSQMessenger m_messenger;
-    VSQLogging m_logging;
+    void setupCore();
+    void setupFonts();
+    void setupConnections();
+    void setupEngine();
+
+    void onApplicationStateChanged(Qt::ApplicationState state);
+
+    VSQSettings *m_settings;
+    VSQCrashReporter *m_crashReporter;
+    VSQMessenger *m_messenger;
+    VSQQmlEngine *m_engine;
 };
 
-#endif // VSQApplication
+#endif // VSQ_APPLICATION_H
