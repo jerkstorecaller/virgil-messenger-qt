@@ -136,6 +136,10 @@ void VSQApplication::setupFonts()
     QFont font(ApplicationBase::font());
     font.setPointSize(1.5 * ApplicationBase::font().pointSize());
     setFont(font);
+// ERROR NULL POINTER !!!
+//        QObject *rootObject(m_engine.rootObjects().first());
+//        rootObject->setProperty("width", 800);
+//        rootObject->setProperty("height", 640);
 }
 
 void VSQApplication::setupConnections()
