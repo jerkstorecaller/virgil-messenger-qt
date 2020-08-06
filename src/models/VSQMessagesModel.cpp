@@ -34,12 +34,27 @@
 
 #include "models/VSQMessagesModel.h"
 
+#include "database/VSQMessagesDatabase.h"
 #include "VSQUtils.h"
 
 Q_LOGGING_CATEGORY(lcMessagesModel, "messagesModel")
 
+VSQMessagesModel::VSQMessagesModel(VSQMessagesDatabase *messagesDatabase, QObject *parent)
+    : QAbstractListModel(parent)
+    , m_messagesDatabase(messagesDatabase)
+    , m_fetchedAll(false)
+{
+    connect(m_messagesDatabase, &VSQMessagesDatabase::reset, this, &VSQMessagesModel::clearMessages);
+    connect(m_messagesDatabase, &VSQMessagesDatabase::fetched, this, &VSQMessagesModel::addFetchedMessages);
+}
+
+VSQMessagesModel::~VSQMessagesModel()
+{}
+
 void VSQMessagesModel::addMessage(const Message &message)
 {
+    m_messagesDatabase->insert(message);
+
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_messages.push_back(message);
     endInsertRows();
@@ -103,10 +118,7 @@ void VSQMessagesModel::setUser(const QString &user)
     if (m_user == user)
         return;
     m_user = user;
-
-    beginResetModel();
-    m_messages.clear();
-    endResetModel();
+    clearMessages();
 }
 
 void VSQMessagesModel::setRecipient(const QString &recipient)
@@ -193,6 +205,19 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
     }
 }
 
+void VSQMessagesModel::fetchMore(const QModelIndex &parent)
+{
+    Q_UNUSED(parent);
+    if (!m_fetchedAll)
+        m_messagesDatabase->fetch();
+}
+
+bool VSQMessagesModel::canFetchMore(const QModelIndex &parent) const
+{
+    Q_UNUSED(parent);
+    return m_fetchedAll;
+}
+
 Optional<int> VSQMessagesModel::findMessageRow(const QString &id) const
 {
     // TODO(fpohtmeh): add caching
@@ -202,14 +227,33 @@ Optional<int> VSQMessagesModel::findMessageRow(const QString &id) const
     return NullOptional;
 }
 
+void VSQMessagesModel::clearMessages()
+{
+    beginResetModel();
+    m_messages.clear();
+    endResetModel();
+}
+
 void VSQMessagesModel::setMessageStatusByRow(int row, const Message::Status status)
 {
     auto &message = m_messages[row];
     if (message.status == status)
         return;
     message.status = status;
+    m_messagesDatabase->updateStatus(message);
     emit dataChanged(index(row), index(row), { StatusRole });
     emit messageStatusChanged(message);
+}
+
+void VSQMessagesModel::addFetchedMessages(const QVector<Message> &messages, bool fetchedAll)
+{
+    m_fetchedAll = fetchedAll;
+    beginInsertRows(QModelIndex(), rowCount(), rowCount() + messages.count());
+    // TODO(fpohtmeh): (for partial fetch) append at the beginnig sometime? sort messages? use sort proxy model for sorting?
+    m_messages << messages;
+    endInsertRows();
+    for (auto &message : messages)
+        emit messageAdded(message);
 }
 
 QString VSQMessagesModel::displayStatus(const Message::Status status) const

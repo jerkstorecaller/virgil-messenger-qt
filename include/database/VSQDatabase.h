@@ -40,6 +40,7 @@
 
 #include "VSQCommon.h"
 
+class VSQMessagesDatabase;
 class VSQSettings;
 
 Q_DECLARE_LOGGING_CATEGORY(lcDatabase)
@@ -50,10 +51,12 @@ class VSQDatabase : public QObject
 
 public:
     explicit VSQDatabase(const VSQSettings *settings, QObject *parent);
-    ~VSQDatabase();
+    ~VSQDatabase() override;
 
     void open();
     void setUser(const QString &userWithEnv);
+
+    VSQMessagesDatabase *messages();
 
 signals:
     void opened();
@@ -63,7 +66,9 @@ private:
     const VSQSettings *m_settings;
     const QString m_connectionName;
     const QString m_fileName;
-    QSqlDatabase m_db;
+    QSqlDatabase m_database;
+
+    VSQMessagesDatabase *m_messages;
 };
 
 #endif // VSQ_DATABASE_H

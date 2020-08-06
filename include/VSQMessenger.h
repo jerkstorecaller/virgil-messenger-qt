@@ -111,14 +111,15 @@ private:
     VSQSettings *m_settings;
     QNetworkAccessManager *m_networkAccessManager;
     VSQCrashReporter *m_crashReporter;
-    VSQAttachmentBuilder m_attachmentBuilder;
-    VSQMessagesModel m_messageModel;
-    VSQChatsModel m_chatsModel;
 
     VSQDatabase *m_database;
     QThread *m_databaseThread;
     VSQClient *m_client;
     QThread *m_clientThread;
+
+    VSQAttachmentBuilder m_attachmentBuilder;
+    VSQMessagesModel m_messageModel;
+    VSQChatsModel m_chatsModel;
 
     QString m_user;
     QString m_recipient;

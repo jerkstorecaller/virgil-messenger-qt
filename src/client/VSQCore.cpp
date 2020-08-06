@@ -162,7 +162,7 @@ Optional<QString> VSQCore::encryptMessageBody(const QString &contact, const QStr
 
     QJsonDocument doc(mainObject);
     QString internalJson = doc.toJson(QJsonDocument::Compact);
-    qCDebug(lcCore) << internalJson;
+    qCDebug(lcCore) << "json before encryption:" << internalJson;
 
     // Encrypt message
     if (VS_CODE_OK != vs_messenger_virgil_encrypt_msg(

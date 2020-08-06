@@ -48,13 +48,13 @@ VSQMessenger::VSQMessenger(VSQSettings *settings, QNetworkAccessManager *network
     , m_settings(settings)
     , m_networkAccessManager(networkAccessManager)
     , m_crashReporter(crashReporter)
-    , m_attachmentBuilder(settings)
-    , m_messageModel(this)
-    , m_chatsModel(this)
     , m_database(new VSQDatabase(settings, nullptr))
     , m_databaseThread(new QThread())
     , m_client(new VSQClient(settings, networkAccessManager, nullptr))
     , m_clientThread(new QThread())
+    , m_attachmentBuilder(settings)
+    , m_messageModel(m_database->messages(), this)
+    , m_chatsModel(this)
 {
     m_database->moveToThread(m_databaseThread);
     connect(m_databaseThread, &QThread::started, m_database, &VSQDatabase::open);

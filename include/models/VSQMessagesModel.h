@@ -39,6 +39,8 @@
 
 #include "VSQCommon.h"
 
+class VSQMessagesDatabase;
+
 Q_DECLARE_LOGGING_CATEGORY(lcMessagesModel)
 
 class VSQMessagesModel : public QAbstractListModel
@@ -66,7 +68,8 @@ public:
         AttachmentLoadingFailedRole
     };
 
-    using QAbstractListModel::QAbstractListModel;
+    explicit VSQMessagesModel(VSQMessagesDatabase *messagesDatabase, QObject *parent = nullptr);
+    ~VSQMessagesModel() override;
 
     void addMessage(const Message &message);
     void setMessageStatus(const Message &message, const Message::Status status);
@@ -82,7 +85,8 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     QVariant data(const QModelIndex &index, int role) const override;
 
-    // TODO(fpohtmeh): add fetchMore functionality
+    void fetchMore(const QModelIndex &parent) override;
+    bool canFetchMore(const QModelIndex &parent) const override;
 
 signals:
     void messageAdded(const Message &message);
@@ -90,13 +94,17 @@ signals:
 
 private:
     Optional<int> findMessageRow(const QString &id) const;
+    void clearMessages();
     void setMessageStatusByRow(int row, const Message::Status status);
+    void addFetchedMessages(const QVector<Message> &messages, bool fetchedAll);
 
     QString displayStatus(const Message::Status status) const;
     bool isInRow(const Message &message, int row) const;
     bool isFirstInRow(const Message &message, int row) const;
 
-    std::vector<Message> m_messages;
+    VSQMessagesDatabase *m_messagesDatabase;
+    bool m_fetchedAll;
+    QVector<Message> m_messages;
     QString m_user;
 };
 
