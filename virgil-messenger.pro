@@ -107,6 +107,7 @@ HEADERS += \
         include/models/VSQMessagesModel.h \
         # Database
         include/database/VSQDatabase.h \
+        include/database/VSQMessagesDatabase.h \
         # Platforms
         include/android/VSQAndroid.h \
         include/macos/VSQMacos.h \
@@ -140,6 +141,7 @@ SOURCES += \
         src/models/VSQMessagesModel.cpp \
         # Database
         src/database/VSQDatabase.cpp \
+        src/database/VSQMessagesDatabase.cpp \
         # Platforms
         src/android/VSQAndroid.cpp
 

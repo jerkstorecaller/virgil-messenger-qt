@@ -38,6 +38,5 @@ Page {
             form.hideLoading()
             window.showPopupError(qsTr("Sign-in failed. Please check username/password"))
         }
-        // TODO(fpohtmeh): remove duplicated code in AuthPage
     }
 }

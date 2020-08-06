@@ -59,11 +59,12 @@ VSQMessenger::VSQMessenger(VSQSettings *settings, QNetworkAccessManager *network
     m_database->moveToThread(m_databaseThread);
     connect(m_databaseThread, &QThread::started, m_database, &VSQDatabase::open);
     connect(m_database, &VSQDatabase::failed, this, &VSQMessenger::quitRequested);
-    m_databaseThread->start();
+    connect(m_database, &VSQDatabase::opened, m_clientThread, std::bind(&QThread::start, m_clientThread, QThread::InheritPriority));
 
     m_client->moveToThread(m_clientThread);
     connect(m_clientThread, &QThread::started, m_client, &VSQClient::start);
-    m_clientThread->start();
+
+    m_databaseThread->start();
 
 #if VS_PUSHNOTIFICATIONS
     VSQPushNotifications::instance().startMessaging();
@@ -113,15 +114,13 @@ void VSQMessenger::setupConnections()
     connect(m_client, &VSQClient::signedOut, this, std::bind(&VSQMessenger::credentialsRequested, this, true));
     connect(m_client, &VSQClient::signedOut, this, std::bind(&VSQMessenger::setUser, this, QLatin1String()));
     connect(m_client, &VSQClient::signedOut, this, &VSQMessenger::signedOut);
-    connect(m_client, &VSQClient::signedUp, this, &VSQMessenger::signedUp);
-    connect(m_client, &VSQClient::signUpFailed, this, &VSQMessenger::signUpFailed);
     connect(m_client, &VSQClient::keyBackuped, this, &VSQMessenger::keyBackuped);
     connect(m_client, &VSQClient::backupKeyFailed, this, &VSQMessenger::backupKeyFailed);
     // Signed users: client-to-settings
     connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::addUserToList);
     connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::setLastSignedInUser);
-    connect(m_client, &VSQClient::signedUp, m_settings, &VSQSettings::addUserToList);
-    connect(m_client, &VSQClient::signedUp, m_settings, &VSQSettings::setLastSignedInUser);
+    // Signed users: client-to-database
+    connect(m_client, &VSQClient::signedIn, m_database, &VSQDatabase::setUser);
 
     // Contacts: messenger-to-client
     connect(this, &VSQMessenger::addContact, m_client, &VSQClient::addContact);
@@ -130,6 +129,7 @@ void VSQMessenger::setupConnections()
     connect(m_client, &VSQClient::addContactFailed, this, &VSQMessenger::addContactFailed);
     // Contacts status: client-to-models
     connect(m_client, &VSQClient::contactAdded, &m_chatsModel, &VSQChatsModel::processContact);
+
     // Messages: messenger-to-client
     connect(this, &VSQMessenger::createSendMessage, this, &VSQMessenger::onCreateSendMessage);
     connect(this, &VSQMessenger::sendMessage, m_client, &VSQClient::sendMessage);
@@ -146,6 +146,9 @@ void VSQMessenger::setupConnections()
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messageModel, args::_1, Message::Status::Failed));
     connect(m_client, &VSQClient::messageDelivered, &m_messageModel,
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messageModel, args::_1, Message::Status::Received));
+    // Messages status: model-to-model
+    connect(&m_messageModel, &VSQMessagesModel::messageAdded, &m_chatsModel, &VSQChatsModel::processMessage);
+    connect(&m_messageModel, &VSQMessagesModel::messageStatusChanged, &m_chatsModel, &VSQChatsModel::updateMessageStatus);
 
     // Upload status: client-to-model
     connect(m_client, &VSQClient::uploadStarted, &m_messageModel,
@@ -155,10 +158,6 @@ void VSQMessenger::setupConnections()
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messageModel, args::_1, false));
     connect(m_client, &VSQClient::uploadFailed, &m_messageModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messageModel, args::_1, true));
-    // Messages status: model-to-model
-    connect(&m_messageModel, &VSQMessagesModel::messageAdded, &m_chatsModel, &VSQChatsModel::processMessage);
-    connect(&m_messageModel, &VSQMessagesModel::messageStatusChanged, &m_chatsModel, &VSQChatsModel::updateMessageStatus);
-
     // Other connections: client-to-crash reporter
     connect(m_client, &VSQClient::virgilUrlChanged, m_crashReporter, &VSQCrashReporter::setUrl);
     // Other connections: messenger-to-client

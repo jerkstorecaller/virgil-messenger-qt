@@ -67,11 +67,9 @@ signals:
     void backupKey(const QString &password);
     void signInWithKey(const QString &userWithEnv, const QString &password);
 
-    void signedIn(const QString &userWithEnv);
-    void signInFailed(const QString &userWithEnv, const QString &errorText);
+    void signedIn(const QString &userWithEnv, bool newUser);
+    void signInFailed(const QString &userWithEnv, const QString &errorText, bool newUser);
     void signedOut();
-    void signedUp(const QString &userWithEnv);
-    void signUpFailed(const QString &userWithEnv, const QString &errorText);
     void keyBackuped(const QString &password);
     void backupKeyFailed(const QString &password, const QString &errorText);
 

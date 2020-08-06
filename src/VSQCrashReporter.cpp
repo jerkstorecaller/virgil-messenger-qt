@@ -77,6 +77,7 @@ void VSQCrashReporter::check()
 bool VSQCrashReporter::sendLogFiles()
 {
     QByteArray fileData;
+    // TODO(fpohtmeh): create in settings
     const QDir writeDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (!writeDir.exists()) {
         qFatal("Directory [%s] doesn't exist.", qPrintable(writeDir.absolutePath()));

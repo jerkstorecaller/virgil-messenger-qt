@@ -35,8 +35,12 @@
 #include "database/VSQDatabase.h"
 
 #include <QSqlError>
+#include <QSqlQuery>
 
 #include "VSQSettings.h"
+#include "VSQUtils.h"
+
+Q_LOGGING_CATEGORY(lcDatabase, "database")
 
 VSQDatabase::VSQDatabase(const VSQSettings *settings, QObject *parent)
     : QObject(parent)
@@ -54,15 +58,43 @@ VSQDatabase::~VSQDatabase()
 
 void VSQDatabase::open()
 {
+    qCDebug(lcDatabase) << "Database opening...";
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     if (!m_db.isValid()) {
         qFatal("Cannot add database: %s", qPrintable(m_db.lastError().text()));
         emit failed();
     }
-    m_db.setDatabaseName(m_settings->fileName());
+    m_db.setDatabaseName(m_settings->databaseFileName());
     if (!m_db.open()) {
         qFatal("Cannot open database: %s", qPrintable(m_db.lastError().text()));
         emit failed();
     }
+    qCDebug(lcDatabase) << "Database is opened:" << m_db.databaseName();
     emit opened();
+}
+
+void VSQDatabase::setUser(const QString &userWithEnv)
+{
+    qCDebug(lcDatabase) << "Set user:" << userWithEnv;
+    const QString user = VSQUtils::escapedUserName(userWithEnv);
+    const QString messagesTableName = QString("Messages_") + user;
+    const QString queryString = QString(
+        "CREATE TABLE IF NOT EXISTS %1 ("
+        "  id TEXT NOT NULL UNIQUE,"
+        "  timestamp TEXT NOT NULL,"
+        "  body TEXT NOT NULL,"
+        "  contact TEXT NOT NULL,"
+        "  author INTEGER NOT NULL,"
+        "  status INTEGER NOT NULL,"
+        "  attachment_id TEXT,"
+        "  attachment_type INTEGER,"
+        "  attachment_local_url TEXT,"
+        "  attachment_size INTEGER"
+        ")"
+    ).arg(messagesTableName);
+    qCDebug(lcDatabase) << queryString;
+    QSqlQuery query(queryString, m_db);
+    if (!query.exec()) {
+        qFatal("Failed to create database table %s", qPrintable(messagesTableName));
+    }
 }

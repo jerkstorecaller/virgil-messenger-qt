@@ -62,7 +62,7 @@ Page {
         }
         onBackupKeyFailed: {
             form.hideLoading()
-            window.showPopupError(error)
+            window.showPopupError(errorText)
             mainView.back() // TODO(fpohtmeh): remove main view
         }
     }

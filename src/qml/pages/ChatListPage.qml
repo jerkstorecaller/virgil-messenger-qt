@@ -213,6 +213,6 @@ Page {
     Connections {
         target: messenger
         onContactAdded: mainView.showChatWith(contact) // TODO(fpohtmeh): remove mainView
-        onAddContactFailed: window.showPopupError(error)
+        onAddContactFailed: window.showPopupError(errorText)
     }
 }

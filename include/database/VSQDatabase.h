@@ -38,7 +38,11 @@
 #include <QObject>
 #include <QSqlDatabase>
 
+#include "VSQCommon.h"
+
 class VSQSettings;
+
+Q_DECLARE_LOGGING_CATEGORY(lcDatabase)
 
 class VSQDatabase : public QObject
 {
@@ -49,6 +53,7 @@ public:
     ~VSQDatabase();
 
     void open();
+    void setUser(const QString &userWithEnv);
 
 signals:
     void opened();

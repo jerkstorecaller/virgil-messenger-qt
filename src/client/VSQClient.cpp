@@ -88,6 +88,7 @@ VSQClient::~VSQClient()
 
 void VSQClient::start()
 {
+    qCDebug(lcClient) << "Client starting...";
     // Sign-in connections
     connect(this, &VSQClient::signIn, this, &VSQClient::onSignIn);
     connect(this, &VSQClient::signOut, this, &VSQClient::onSignOut);
@@ -308,11 +309,11 @@ Optional<Message> VSQClient::createMessage(const QXmppMessage &xmppMessage)
 void VSQClient::onSignIn(const QString &userWithEnv)
 {
     if (!m_core.signIn(userWithEnv))
-        emit signInFailed(userWithEnv, m_core.lastErrorText());
+        emit signInFailed(userWithEnv, m_core.lastErrorText(), false);
     else if (!xmppConnect())
-        emit signInFailed(userWithEnv, m_lastErrorText);
+        emit signInFailed(userWithEnv, m_lastErrorText, false);
     else
-        emit signedIn(userWithEnv);
+        emit signedIn(userWithEnv, false);
 }
 
 void VSQClient::onSignOut()
@@ -326,9 +327,9 @@ void VSQClient::onSignOut()
 void VSQClient::onSignUp(const QString &userWithEnv)
 {
     if (m_core.signUp(userWithEnv))
-        emit signedUp(userWithEnv);
+        emit signedIn(userWithEnv, true);
     else
-        emit signUpFailed(userWithEnv, m_core.lastErrorText());
+        emit signInFailed(userWithEnv, m_core.lastErrorText(), true);
 }
 
 void VSQClient::onBackupKey(const QString &password)
@@ -342,11 +343,11 @@ void VSQClient::onBackupKey(const QString &password)
 void VSQClient::onSignInWithKey(const QString &user, const QString &password)
 {
     if (!m_core.signInWithKey(user, password))
-        emit signInFailed(user, m_core.lastErrorText());
+        emit signInFailed(user, m_core.lastErrorText(), false);
     else if (!xmppConnect())
-        emit signInFailed(user, m_lastErrorText);
+        emit signInFailed(user, m_lastErrorText, false);
     else
-        emit signedIn(user);
+        emit signedIn(user, false);
 }
 
 void VSQClient::onAddContact(const QString &contact)

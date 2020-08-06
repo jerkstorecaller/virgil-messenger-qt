@@ -2,7 +2,6 @@ import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
 import QuickFuture 1.0
-import MesResult 1.0
 
 import "../theme"
 import "../components"
@@ -42,26 +41,26 @@ Page {
             onClicked: {
                 if (password.text === '') {
                     window.showPopupError('Password can not be empty')
+                    return
                 }
-
-                form.showLoading(qsTr("Downloading your private key..."))
-
-                var future = Messenger.signInWithBackupKey(username, password.text)
-
-                Future.onFinished(future, function(result) {
-                    form.hideLoading()
-
-                    if (Future.result(future) === Result.MRES_OK) {
-                        mainView.showContacts(true)
-                        return
-                    }
-
-                    window.showPopupError("Private key download error")
-                })
+                messenger.signInWithKey(username, password.text)
             }
         }
     }
 
     footer: Footer {}
+
+    Connections {
+        target: messenger
+        onSignInWithKey: form.showLoading(qsTr("Downloading your private key..."))
+        onSignedIn: {
+            form.hideLoading()
+            mainView.showContacts(true)
+        }
+        onSignInFailed: {
+            form.hideLoading()
+            showPopupError(qsTr("Private key download error"))
+        }
+    }
 }
 
