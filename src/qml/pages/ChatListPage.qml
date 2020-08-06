@@ -51,7 +51,7 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
-import QuickFuture 1.0
+import com.virgilsecurity.messenger 1.0
 
 import "../theme"
 import "../components"
@@ -89,7 +89,9 @@ Page {
     ListView {
         id: listView
         anchors.fill: parent
-        model: messenger.chats
+        model: ChatsProxyModel {
+            sourceModel: messenger.chats
+        }
         delegate: ItemDelegate {
             id: listItem
             width: parent.width
@@ -199,8 +201,10 @@ Page {
         if (component.status === Component.Ready) {
             var dialog = component.createObject(window)
             var apply = function() {
-                messenger.addContact(dialog.contact.toLowerCase())
-                dialog.close() // TODO(fpohtmeh): remove?
+                if (dialog.contact) {
+                    messenger.addContact(dialog.contact.toLowerCase())
+                    dialog.close()
+                }
             }
             dialog.applied.connect(apply)
             dialog.accepted.connect(apply)

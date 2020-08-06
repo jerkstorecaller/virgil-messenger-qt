@@ -22,21 +22,24 @@ Page {
         UserNameFormInput {
             id: username
             placeholder: qsTr("Enter Username")
+            onAccepted: signIn()
         }
 
         FormPrimaryButton {
-            onClicked: {
-
-                if (username.text === '') {
-                    window.showPopupError('Username is empty')
-                }
-
-                mainView.showSignInAs({ username: username.text })
-            }
+            onClicked: signIn();
             text: qsTr("Log In")
         }
 
     }
 
     footer: Footer { }
+
+    function signIn() {
+        if (username.text === '') {
+            window.showPopupError('Username is empty')
+        }
+        else {
+            mainView.showSignInAs({ username: username.text })
+        }
+    }
 }

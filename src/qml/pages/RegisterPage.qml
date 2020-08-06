@@ -28,6 +28,7 @@ Page {
         UserNameFormInput {
             id: username
             placeholder: qsTr('Username')
+            onAccepted: messenger.signUp(username.text)
         }
 
         FormPrimaryButton {

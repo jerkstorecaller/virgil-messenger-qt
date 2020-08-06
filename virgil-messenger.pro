@@ -103,7 +103,9 @@ HEADERS += \
         # Models
         include/models/VSQAttachmentBuilder.h \
         include/models/VSQChatsModel.h \
+        include/models/VSQChatsProxyModel.h \
         include/models/VSQMessagesModel.h \
+        include/models/VSQMessagesProxyModel.h \
         # Database
         include/database/VSQDatabase.h \
         include/database/VSQMessagesDatabase.h \
@@ -137,7 +139,9 @@ SOURCES += \
         # Models
         src/models/VSQAttachmentBuilder.cpp \
         src/models/VSQChatsModel.cpp \
+        src/models/VSQChatsProxyModel.cpp \
         src/models/VSQMessagesModel.cpp \
+        src/models/VSQMessagesProxyModel.cpp \
         # Database
         src/database/VSQDatabase.cpp \
         src/database/VSQMessagesDatabase.cpp \

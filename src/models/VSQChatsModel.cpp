@@ -34,7 +34,20 @@
 
 #include "models/VSQChatsModel.h"
 
+#include "database/VSQMessagesDatabase.h"
 #include "VSQUtils.h"
+
+Q_LOGGING_CATEGORY(lcChatsModel, "chatsModel")
+
+VSQChatsModel::VSQChatsModel(VSQMessagesDatabase *messagesDatabase, QObject *parent)
+    : QAbstractListModel(parent)
+    , m_messagesDatabase(messagesDatabase)
+{
+    connect(m_messagesDatabase, &VSQMessagesDatabase::chatsFetched, this, &VSQChatsModel::addFetchedChats);
+}
+
+VSQChatsModel::~VSQChatsModel()
+{}
 
 void VSQChatsModel::processMessage(const Message &message)
 {
@@ -43,7 +56,8 @@ void VSQChatsModel::processMessage(const Message &message)
 
 void VSQChatsModel::processContact(const QString &contact)
 {
-    addChat(contact, QLatin1String(), QDateTime::currentDateTime(), NullOptional);
+    if (!findChatRow(contact))
+        addChat(contact, QLatin1String(), QDateTime::currentDateTime(), NullOptional);
 }
 
 void VSQChatsModel::updateMessageStatus(const Message &message)
@@ -59,11 +73,6 @@ void VSQChatsModel::updateMessageStatus(const Message &message)
     }
 }
 
-void VSQChatsModel::setRecipient(const QString &recipient)
-{
-    m_recipient = recipient;
-}
-
 int VSQChatsModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
@@ -75,6 +84,7 @@ QHash<int, QByteArray> VSQChatsModel::roleNames() const
     QHash<int, QByteArray> names;
     names[NicknameRole] = "nickname";
     names[LastMessageBodyRole] = "lastMessageBody";
+    names[LastEventTimestampRole] = "lastEventTimestamp";
     names[LastEventTimeRole] = "lastEventTime";
     names[UnreadMessagesCountRole] = "unreadMessagesCount";
     return names;
@@ -88,6 +98,8 @@ QVariant VSQChatsModel::data(const QModelIndex &index, int role) const
         return chat.contact;
     case LastMessageBodyRole:
         return chat.lastMessageBody.left(30);
+    case LastEventTimestampRole:
+        return chat.lastEventTimestamp;
     case LastEventTimeRole:
         return chat.lastEventTimestamp.toString("hh:mm");
     case UnreadMessagesCountRole:
@@ -95,6 +107,21 @@ QVariant VSQChatsModel::data(const QModelIndex &index, int role) const
     default:
         return QVariant();
     }
+}
+
+void VSQChatsModel::setUser(const QString &user)
+{
+    if (user.isEmpty())
+        return;
+    qCDebug(lcChatsModel) << "Chats user:" << user;
+}
+
+void VSQChatsModel::setRecipient(const QString &recipient)
+{
+    if (m_recipient == recipient || recipient.isEmpty())
+        return;
+    qCDebug(lcChatsModel) << "Chats recipient:" << recipient;
+    m_recipient = recipient;
 }
 
 Optional<int> VSQChatsModel::findChatRow(const QString &contact) const
@@ -110,11 +137,10 @@ Optional<int> VSQChatsModel::findChatRow(const QString &contact) const
 }
 
 void VSQChatsModel::addChat(const QString &contact, const QString &messageBody, const QDateTime &eventTimestamp,
-                         const Optional<Message::Status> status)
+                            const Optional<Message::Status> status)
 {
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
     Chat chat;
-    chat.id = VSQUtils::createUuid();
     chat.contact = contact;
     chat.lastMessageBody = messageBody;
     chat.lastEventTimestamp = eventTimestamp;
@@ -126,22 +152,30 @@ void VSQChatsModel::addChat(const QString &contact, const QString &messageBody, 
 void VSQChatsModel::updateChat(const QString &contact, const QString &messageBody, const QDateTime &eventTimestamp,
                             const Optional<Message::Status> status)
 {
-    const auto chatIndex = findChatRow(contact);
-    if (!chatIndex) {
+    const auto chatRow = findChatRow(contact);
+    if (!chatRow) {
         addChat(contact, messageBody, eventTimestamp, status);
     }
     else {
-        const int row = *chatIndex;
+        const int row = *chatRow;
         auto &chat = m_chats[row];
         if (chat.lastEventTimestamp > eventTimestamp)
             return;
         chat.lastMessageBody = messageBody;
         chat.lastEventTimestamp = eventTimestamp;
-        QVector<int> roles { LastMessageBodyRole, LastEventTimeRole };
+        QVector<int> roles { LastMessageBodyRole, LastEventTimeRole, LastEventTimestampRole };
         if (status && *status == Message::Status::Received && m_recipient != contact) {
             ++chat.unreadMessageCount;
             roles << UnreadMessagesCountRole;
         }
         emit dataChanged(index(row), index(row), roles);
     }
+}
+
+void VSQChatsModel::addFetchedChats(const QVector<Chat> &chats)
+{
+    beginResetModel();
+    m_chats = chats;
+    endResetModel();
+    qCDebug(lcChatsModel) << "Chats are updated";
 }

@@ -51,24 +51,23 @@ public:
     explicit VSQMessagesDatabase(QSqlDatabase *database, QObject *parent);
     ~VSQMessagesDatabase() override;
 
-    void setUser(const QString &userWithEnv);
-
 signals:
-    void reset();
-    void fetch();
-    void insert(const Message &message);
-    void updateStatus(const Message &message);
+    void fetchAll(const QString &userWithEnv);
+    void insertMessage(const Message &message);
+    void updateMessageStatus(const Message &message);
 
-    void fetched(const QVector<Message> &messages, bool all);
+    void chatsFetched(const QVector<Chat> &chats);
+    void messagesFetched(const QVector<Message> &messages);
 
 private:
-    void createTables();
-    void onFetch();
-    void onInsert(const Message &message);
-    void onUpdateStatus(const Message &message);
+    void createTablesIfDontExist();
+    void onFetchAll(const QString &userWithEnv);
+    void onInsertMessage(const Message &message);
+    void onUpdateMessageStatus(const Message &message);
 
     QSqlDatabase *m_database;
     QString m_tableName;
+    QString m_user;
 };
 
 #endif // VSQ_MESSAGESDATABASE_H

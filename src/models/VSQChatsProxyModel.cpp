@@ -32,39 +32,30 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Layouts 1.12
+#include "models/VSQChatsProxyModel.h"
 
-import ".."
-import "../../base"
+#include "models/VSQChatsModel.h"
 
-Dialog {
-    id: root
-    x: (parent.width - width) / 2
-    y: (parent.height - height) / 2
-    visible: true
-    title: qsTr("Add Contact")
-    standardButtons: Dialog.Apply | Dialog.Cancel
-    focus: true
-
-    property string contact: contact.text
-
-    contentItem: Rectangle {
-        implicitWidth: 400
-        implicitHeight: 50
-
-        UserNameTextField {
-            id: contact
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 3
-            color: "black"
-            focus: true
-
-            onAccepted: root.accept()
-            onRejected: root.reject()
-        }
-    }
+VSQChatsProxyModel::VSQChatsProxyModel(QObject *parent)
+    : QSortFilterProxyModel(parent)
+{
+    setSortRole(VSQChatsModel::LastEventTimestampRole);
+    sort(0, Qt::DescendingOrder);
 }
 
+VSQChatsProxyModel::~VSQChatsProxyModel()
+{}
+
+void VSQChatsProxyModel::setSourceModel(QAbstractItemModel *model)
+{
+    if (sourceModel()) {
+        qFatal("Chats proxy model already has source model");
+    }
+    auto chatsModel = qobject_cast<VSQChatsModel *>(model);
+    if (!chatsModel) {
+        qFatal("Only VSQChatsModel cant be set as proxy source model");
+    }
+
+    QSortFilterProxyModel::setSourceModel(model);
+    invalidate();
+}

@@ -60,8 +60,9 @@ VSQCore::~VSQCore()
 bool VSQCore::signIn(const QString &userWithEnv)
 {
     // Initialization
-    if (!initialize())
+    if (!initialize()) {
         return false;
+    }
 
     setUser(userWithEnv);
     qCDebug(lcCore) << "Trying to Sign In:" << m_user;
@@ -73,12 +74,15 @@ bool VSQCore::signIn(const QString &userWithEnv)
         return false;
     }
 
+#ifdef VS_OFFLINE
+    return true;
+#endif
+
     // Sign In user, using Virgil Service
     if (VS_CODE_OK != vs_messenger_virgil_sign_in(&creds)) {
         m_lastErrorText = QLatin1String("Cannot Sign In user");
         return false;
     }
-
     return true;
 }
 
@@ -164,6 +168,10 @@ Optional<QString> VSQCore::encryptMessageBody(const QString &contact, const QStr
     QString internalJson = doc.toJson(QJsonDocument::Compact);
     qCDebug(lcCore) << "json before encryption:" << internalJson;
 
+#ifdef VS_OFFLINE
+    return internalJson;
+#endif
+
     // Encrypt message
     if (VS_CODE_OK != vs_messenger_virgil_encrypt_msg(
                      contact.toStdString().c_str(),
@@ -171,7 +179,7 @@ Optional<QString> VSQCore::encryptMessageBody(const QString &contact, const QStr
                      encryptedMessage,
                      _encryptedMsgSzMax,
                      &encryptedMessageSz)) {
-        m_lastErrorText = QLatin1String("Cannot encrypt message to be sent");
+        m_lastErrorText = QLatin1String("Cannot encrypt message to for sending");
         qCWarning(lcCore) << m_lastErrorText;
         return NullOptional;
     }
@@ -184,8 +192,8 @@ Optional<QString> VSQCore::decryptMessageBody(const QString &contact, const QStr
     uint8_t decryptedBody[decryptedBodyMaxSize];
     size_t decryptedBodySize = 0;
 
-    qCDebug(lcCore) << "Sender         :" << contact;
-    qCDebug(lcCore) << "Encrypted body :" << encrypedBody;
+    qCDebug(lcCore) << "Sender:" << contact;
+    qCDebug(lcCore) << "Encrypted body:" << encrypedBody;
 
     // Decrypt message
     // DECRYPTED_MESSAGE_SZ_MAX - 1  - This is required for a Zero-terminated string
@@ -214,6 +222,9 @@ Optional<QString> VSQCore::decryptMessageBody(const QString &contact, const QStr
 
 bool VSQCore::userExists(const QString &user) const
 {
+#ifdef VS_OFFLINE
+    return true;
+#endif
     if (VS_CODE_OK != vs_messenger_virgil_search(user.toStdString().c_str()))
         return false;
     return true;

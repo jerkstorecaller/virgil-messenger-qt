@@ -46,6 +46,8 @@
 #include "VSQMessenger.h"
 #include "VSQQmlEngine.h"
 #include "VSQSettings.h"
+#include "models/VSQChatsProxyModel.h"
+#include "models/VSQMessagesProxyModel.h"
 #include "ui/VSQUiHelper.h"
 #include "macos/VSQMacos.h"
 
@@ -162,6 +164,9 @@ void VSQApplication::setupEngine()
     context->setContextProperty("settings", m_settings);
     context->setContextProperty("crashReporter", m_crashReporter);
     context->setContextProperty("logging", m_logging);
+
+    qmlRegisterType<VSQChatsProxyModel>("com.virgilsecurity.messenger", 1, 0, "ChatsProxyModel");
+    qmlRegisterType<VSQMessagesProxyModel>("com.virgilsecurity.messenger", 1, 0, "MessagesProxyModel");
 
     reloadQml();
 }

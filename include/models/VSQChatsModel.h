@@ -39,6 +39,10 @@
 
 #include "VSQCommon.h"
 
+class VSQMessagesDatabase;
+
+Q_DECLARE_LOGGING_CATEGORY(lcChatsModel)
+
 class VSQChatsModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -48,21 +52,24 @@ public:
     {
         NicknameRole = Qt::UserRole,
         LastMessageBodyRole,
+        LastEventTimestampRole,
         LastEventTimeRole,
         UnreadMessagesCountRole
     };
 
-    using QAbstractListModel::QAbstractListModel;
+    explicit VSQChatsModel(VSQMessagesDatabase *messagesDatabase, QObject *parent = nullptr);
+    ~VSQChatsModel() override;
 
     void processMessage(const Message &message);
     void processContact(const QString &contact);
     void updateMessageStatus(const Message &message);
 
-    void setRecipient(const QString &recipient);
-
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QHash<int, QByteArray> roleNames() const override;
     QVariant data(const QModelIndex &index, int role) const override;
+
+    void setUser(const QString &user);
+    void setRecipient(const QString &recipient);
 
 private:
     Optional<int> findChatRow(const QString &contact) const;
@@ -70,8 +77,10 @@ private:
                  const Optional<Message::Status> status);
     void updateChat(const QString &contact, const QString &messageBody, const QDateTime &eventTimestamp,
                     const Optional<Message::Status> status);
+    void addFetchedChats(const QVector<Chat> &chats);
 
-    std::vector<Chat> m_chats;
+    VSQMessagesDatabase *m_messagesDatabase;
+    QVector<Chat> m_chats;
     QString m_recipient;
 };
 

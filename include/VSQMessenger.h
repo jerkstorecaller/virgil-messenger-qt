@@ -51,11 +51,13 @@ class VSQCrashReporter;
 class VSQDatabase;
 class VSQSettings;
 
+Q_DECLARE_LOGGING_CATEGORY(lcMessenger);
+
 class VSQMessenger : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString user MEMBER m_user NOTIFY userChanged)
-    Q_PROPERTY(QString recipient MEMBER m_recipient NOTIFY recipientChanged)
+    Q_PROPERTY(QString user MEMBER m_user WRITE setUser NOTIFY userChanged)
+    Q_PROPERTY(QString recipient MEMBER m_recipient WRITE setRecipient NOTIFY recipientChanged)
     Q_PROPERTY(VSQMessagesModel *messages READ messageModel CONSTANT)
     Q_PROPERTY(VSQChatsModel *chats READ chatsModel CONSTANT)
 
@@ -88,6 +90,7 @@ signals:
     void sendMessage(const Message &message);
     void messageSent();
     void sendMessageFailed();
+    void messageAdded();
 
     void quitRequested();
     void credentialsRequested(bool signOut);
@@ -118,7 +121,7 @@ private:
     QThread *m_clientThread;
 
     VSQAttachmentBuilder m_attachmentBuilder;
-    VSQMessagesModel m_messageModel;
+    VSQMessagesModel m_messagesModel;
     VSQChatsModel m_chatsModel;
 
     QString m_user;

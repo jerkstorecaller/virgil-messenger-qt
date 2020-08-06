@@ -9,11 +9,12 @@ Menu {
     id: root
 
     property bool dropdown: false
+    property bool compact: false
 
-    readonly property real menuWidth: 200
-    readonly property real menuPadding: 10
-    readonly property real menuItemHeight: 40
-    readonly property real menuItemPadding: 20
+    readonly property real menuWidth: compact ? 150 : 200
+    readonly property real menuPadding: compact ? 5 : 10
+    readonly property real menuItemHeight: compact ? 30 : 40
+    readonly property real menuItemPadding: compact ? 10 : 20
 
     QtObject {
         readonly property int spacing: 5

@@ -53,6 +53,7 @@ public:
         BodyRole = Qt::UserRole,
         TimeRole,
         NicknameRole,
+        ContactRole,
         IsUserRoles,
         StatusRole,
         FailedRole,
@@ -78,34 +79,31 @@ public:
     void setUploadProgress(const QString &messageId, DataSize bytesUploaded);
     void setUploadFailed(const QString &messageId, bool failed);
 
-    void setUser(const QString &user);
-    void setRecipient(const QString &recipient);
-
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QHash<int, QByteArray> roleNames() const override;
     QVariant data(const QModelIndex &index, int role) const override;
 
-    void fetchMore(const QModelIndex &parent) override;
-    bool canFetchMore(const QModelIndex &parent) const override;
+    void setUser(const QString &user);
+    void setRecipient(const QString &recipient);
 
 signals:
     void messageAdded(const Message &message);
     void messageStatusChanged(const Message &message);
+    void recipientChanged(const QString &recipient);
 
 private:
     Optional<int> findMessageRow(const QString &id) const;
-    void clearMessages();
     void setMessageStatusByRow(int row, const Message::Status status);
-    void addFetchedMessages(const QVector<Message> &messages, bool fetchedAll);
+    void addFetchedMessages(const QVector<Message> &messages);
 
     QString displayStatus(const Message::Status status) const;
     bool isInRow(const Message &message, int row) const;
     bool isFirstInRow(const Message &message, int row) const;
 
     VSQMessagesDatabase *m_messagesDatabase;
-    bool m_fetchedAll;
     QVector<Message> m_messages;
     QString m_user;
+    QString m_recipient;
 };
 
 #endif // VSQ_MESSAGESMODEL_H

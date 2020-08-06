@@ -59,6 +59,8 @@ Control {
             visible: !d.hasAttachment
 
             property var contextMenu: ContextMenu {
+                compact: true
+
                 Action {
                     text: qsTr("Copy")
                     onTriggered: clipboard.setText(textEdit.getText(0, textEdit.length))
@@ -158,6 +160,8 @@ Control {
             }
 
             property var contextMenu: ContextMenu {
+                compact: true
+
                 Action {
                     text: qsTr("Save as...")
                     onTriggered: console.log("Feature is not implemented")

@@ -137,7 +137,6 @@ Q_DECLARE_METATYPE(Message);
 
 struct Chat
 {
-    QString id;
     QString contact;
     QString lastMessageBody;
     QDateTime lastEventTimestamp;

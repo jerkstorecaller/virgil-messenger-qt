@@ -32,39 +32,26 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Layouts 1.12
+#ifndef VSQ_MESSAGESPROXYMODEL_H
+#define VSQ_MESSAGESPROXYMODEL_H
 
-import ".."
-import "../../base"
+#include <QSortFilterProxyModel>
 
-Dialog {
-    id: root
-    x: (parent.width - width) / 2
-    y: (parent.height - height) / 2
-    visible: true
-    title: qsTr("Add Contact")
-    standardButtons: Dialog.Apply | Dialog.Cancel
-    focus: true
+class VSQMessagesModel;
 
-    property string contact: contact.text
+class VSQMessagesProxyModel : public QSortFilterProxyModel
+{
+    Q_OBJECT
 
-    contentItem: Rectangle {
-        implicitWidth: 400
-        implicitHeight: 50
+public:
+    explicit VSQMessagesProxyModel(QObject *parent = nullptr);
+    ~VSQMessagesProxyModel() override;
 
-        UserNameTextField {
-            id: contact
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 3
-            color: "black"
-            focus: true
+private:
+    void setSourceModel(QAbstractItemModel *model) override;
+    void setRecipient(const QString &recipient);
 
-            onAccepted: root.accept()
-            onRejected: root.reject()
-        }
-    }
-}
+    QString m_recipient;
+};
 
+#endif // VSQ_MESSAGESPROXYMODEL_H

@@ -5,17 +5,20 @@ import QtQuick.Layouts 1.12
 import "../theme"
 
 Column {
+    id: root
+    spacing: 5
 
     Layout.fillWidth: true
     Layout.maximumWidth: Theme.formMaximumWidth
     Layout.alignment: Qt.AlignHCenter
 
-    spacing: 5
-
     property alias label: formLabel.text
     property alias text: formField.text
     property alias placeholder: formField.placeholderText
     property alias inputHint: formField.inputMethodHints
+
+    signal accepted
+    signal rejected
 
     FormLabel {
         id: formLabel
@@ -36,5 +39,11 @@ Column {
             radius: 20
             color: Theme.inputBackgroundColor
         }
+    }
+
+    Connections {
+        target: formField
+        onAccepted: root.accepted()
+        onRejected: root.rejected()
     }
 }

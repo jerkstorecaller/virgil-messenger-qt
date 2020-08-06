@@ -42,10 +42,8 @@ Q_LOGGING_CATEGORY(lcMessagesModel, "messagesModel")
 VSQMessagesModel::VSQMessagesModel(VSQMessagesDatabase *messagesDatabase, QObject *parent)
     : QAbstractListModel(parent)
     , m_messagesDatabase(messagesDatabase)
-    , m_fetchedAll(false)
 {
-    connect(m_messagesDatabase, &VSQMessagesDatabase::reset, this, &VSQMessagesModel::clearMessages);
-    connect(m_messagesDatabase, &VSQMessagesDatabase::fetched, this, &VSQMessagesModel::addFetchedMessages);
+    connect(m_messagesDatabase, &VSQMessagesDatabase::messagesFetched, this, &VSQMessagesModel::addFetchedMessages);
 }
 
 VSQMessagesModel::~VSQMessagesModel()
@@ -53,8 +51,7 @@ VSQMessagesModel::~VSQMessagesModel()
 
 void VSQMessagesModel::addMessage(const Message &message)
 {
-    m_messagesDatabase->insert(message);
-
+    m_messagesDatabase->insertMessage(message);
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_messages.push_back(message);
     endInsertRows();
@@ -113,29 +110,6 @@ void VSQMessagesModel::setUploadFailed(const QString &messageId, bool failed)
     emit dataChanged(index(row), index(row), { AttachmentLoadingFailedRole });
 }
 
-void VSQMessagesModel::setUser(const QString &user)
-{
-    if (m_user == user)
-        return;
-    m_user = user;
-    clearMessages();
-}
-
-void VSQMessagesModel::setRecipient(const QString &recipient)
-{
-    // TODO(fpohtmeh): load from database
-    // Marks all unread messages as read
-    int row = -1;
-    for (auto &message : m_messages) {
-        ++row;
-        if (message.contact != recipient)
-            continue;
-        if (message.author == Message::Author::User)
-            continue;
-        setMessageStatusByRow(row, Message::Status::Read);
-    }
-}
-
 int VSQMessagesModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
@@ -148,6 +122,7 @@ QHash<int, QByteArray> VSQMessagesModel::roleNames() const
     names[BodyRole] = "body";
     names[TimeRole] = "time";
     names[NicknameRole] = "nickname";
+    names[ContactRole] = "contact";
     names[IsUserRoles] = "isUser";
     names[StatusRole] = "status";
     names[FailedRole] = "failed";
@@ -174,6 +149,8 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
         return message.timestamp.toString(QLatin1String("hh:mm"));
     case NicknameRole:
         return (message.author == Message::Author::User) ? m_user : message.contact;
+    case ContactRole:
+        return message.contact;
     case IsUserRoles:
         return message.author == Message::Author::User;
     case StatusRole:
@@ -205,17 +182,20 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
     }
 }
 
-void VSQMessagesModel::fetchMore(const QModelIndex &parent)
+void VSQMessagesModel::setUser(const QString &user)
 {
-    Q_UNUSED(parent);
-    if (!m_fetchedAll)
-        m_messagesDatabase->fetch();
+    if (m_user == user || user.isEmpty())
+        return;
+    qCDebug(lcMessagesModel) << "Messages user:" << user;
+    m_user = user;
 }
-
-bool VSQMessagesModel::canFetchMore(const QModelIndex &parent) const
+void VSQMessagesModel::setRecipient(const QString &recipient)
 {
-    Q_UNUSED(parent);
-    return m_fetchedAll;
+    if (m_recipient == recipient || recipient.isEmpty())
+        return;
+    qCDebug(lcMessagesModel) << "Messages recipient:" << recipient;
+    m_recipient = recipient;
+    emit recipientChanged(recipient);
 }
 
 Optional<int> VSQMessagesModel::findMessageRow(const QString &id) const
@@ -227,33 +207,31 @@ Optional<int> VSQMessagesModel::findMessageRow(const QString &id) const
     return NullOptional;
 }
 
-void VSQMessagesModel::clearMessages()
-{
-    beginResetModel();
-    m_messages.clear();
-    endResetModel();
-}
-
 void VSQMessagesModel::setMessageStatusByRow(int row, const Message::Status status)
 {
     auto &message = m_messages[row];
     if (message.status == status)
         return;
     message.status = status;
-    m_messagesDatabase->updateStatus(message);
+    m_messagesDatabase->updateMessageStatus(message);
     emit dataChanged(index(row), index(row), { StatusRole });
-    emit messageStatusChanged(message);
 }
 
-void VSQMessagesModel::addFetchedMessages(const QVector<Message> &messages, bool fetchedAll)
+void VSQMessagesModel::addFetchedMessages(const QVector<Message> &messages)
 {
-    m_fetchedAll = fetchedAll;
-    beginInsertRows(QModelIndex(), rowCount(), rowCount() + messages.count());
-    // TODO(fpohtmeh): (for partial fetch) append at the beginnig sometime? sort messages? use sort proxy model for sorting?
-    m_messages << messages;
-    endInsertRows();
-    for (auto &message : messages)
-        emit messageAdded(message);
+    beginResetModel();
+    m_messages = messages;
+    endResetModel();
+
+    int row = -1;
+    for (auto &message : messages) {
+        ++row;
+        if (message.contact != m_recipient)
+            continue;
+        if (message.author == Message::Author::User)
+            continue;
+        setMessageStatusByRow(row, Message::Status::Read);
+    }
 }
 
 QString VSQMessagesModel::displayStatus(const Message::Status status) const

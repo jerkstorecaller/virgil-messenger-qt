@@ -55,12 +55,12 @@ VSQSettings::VSQSettings(QObject *parent)
             qFatal("Failed to create writable directory at %s", qPrintable(dir.absolutePath()));
 
     qCDebug(lcSettings) << "Settings";
-    qCDebug(lcSettings) << "- session id:" << m_sessionId;
-    qCDebug(lcSettings) << "- settings filename:" << fileName();
-    qCDebug(lcSettings) << "- database filename:" << databaseFileName();
-    qCDebug(lcSettings) << "- last signed-in user:" << lastSignedInUser();
-    qCDebug(lcSettings) << "- attachment cache dir:" << attachmentCacheDir().absolutePath();
-    qCDebug(lcSettings) << "- attachment max size:" << attachmentMaxSize();
+    qCDebug(lcSettings) << "Session id:" << m_sessionId;
+    qCDebug(lcSettings) << "Settings filename:" << fileName();
+    qCDebug(lcSettings) << "Database filename:" << databaseFileName();
+    qCDebug(lcSettings) << "Last signed-in user:" << lastSignedInUser();
+    qCDebug(lcSettings) << "Attachment cache dir:" << attachmentCacheDir().absolutePath();
+    qCDebug(lcSettings) << "Attachment max size:" << attachmentMaxSize();
 }
 
 VSQSettings::~VSQSettings()

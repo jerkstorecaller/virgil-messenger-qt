@@ -76,7 +76,7 @@ void VSQDatabase::open()
 void VSQDatabase::setUser(const QString &userWithEnv)
 {
     qCDebug(lcDatabase) << "Set user:" << userWithEnv;
-    m_messages->setUser(userWithEnv);
+    m_messages->fetchAll(userWithEnv);
 }
 
 VSQMessagesDatabase *VSQDatabase::messages()

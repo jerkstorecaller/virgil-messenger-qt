@@ -32,39 +32,41 @@
 //
 //  Lead Maintainer: Virgil Security Inc. <support@virgilsecurity.com>
 
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Layouts 1.12
+#include "models/VSQMessagesProxyModel.h"
 
-import ".."
-import "../../base"
+#include "models/VSQMessagesModel.h"
 
-Dialog {
-    id: root
-    x: (parent.width - width) / 2
-    y: (parent.height - height) / 2
-    visible: true
-    title: qsTr("Add Contact")
-    standardButtons: Dialog.Apply | Dialog.Cancel
-    focus: true
-
-    property string contact: contact.text
-
-    contentItem: Rectangle {
-        implicitWidth: 400
-        implicitHeight: 50
-
-        UserNameTextField {
-            id: contact
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 3
-            color: "black"
-            focus: true
-
-            onAccepted: root.accept()
-            onRejected: root.reject()
-        }
-    }
+VSQMessagesProxyModel::VSQMessagesProxyModel(QObject *parent)
+    : QSortFilterProxyModel(parent)
+{
+    setFilterKeyColumn(0);
+    setFilterRole(VSQMessagesModel::ContactRole);
 }
 
+VSQMessagesProxyModel::~VSQMessagesProxyModel()
+{}
+
+void VSQMessagesProxyModel::setSourceModel(QAbstractItemModel *model)
+{
+    if (sourceModel()) {
+        qFatal("Messages proxy model already has source model");
+    }
+    auto messagesModel = qobject_cast<VSQMessagesModel *>(model);
+    if (!messagesModel) {
+        qFatal("Only VSQMessagesModel cant be set as proxy source model");
+    }
+
+    connect(messagesModel, &VSQMessagesModel::recipientChanged, this, &VSQMessagesProxyModel::setRecipient);
+    QSortFilterProxyModel::setSourceModel(model);
+    invalidate();
+}
+
+void VSQMessagesProxyModel::setRecipient(const QString &recipient)
+{
+    if (m_recipient == recipient || recipient.isEmpty())
+        return;
+    m_recipient = recipient;
+    qCDebug(lcMessagesModel) << "New recipient for messages filtering:" << recipient;
+    setFilterFixedString(recipient);
+    invalidate();
+}

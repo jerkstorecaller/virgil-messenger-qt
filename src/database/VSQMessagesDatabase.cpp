@@ -43,24 +43,15 @@ VSQMessagesDatabase::VSQMessagesDatabase(QSqlDatabase *database, QObject *parent
     : QObject(parent)
     , m_database(database)
 {
-    connect(this, &VSQMessagesDatabase::fetch, this, &VSQMessagesDatabase::onFetch);
-    connect(this, &VSQMessagesDatabase::insert, this, &VSQMessagesDatabase::onInsert);
-    connect(this, &VSQMessagesDatabase::updateStatus, this, &VSQMessagesDatabase::onUpdateStatus);
+    connect(this, &VSQMessagesDatabase::fetchAll, this, &VSQMessagesDatabase::onFetchAll);
+    connect(this, &VSQMessagesDatabase::insertMessage, this, &VSQMessagesDatabase::onInsertMessage);
+    connect(this, &VSQMessagesDatabase::updateMessageStatus, this, &VSQMessagesDatabase::onUpdateMessageStatus);
 }
 
 VSQMessagesDatabase::~VSQMessagesDatabase()
 {}
 
-void VSQMessagesDatabase::setUser(const QString &userWithEnv)
-{
-    const QString user = VSQUtils::escapedUserName(userWithEnv);
-    m_tableName = QString("Messages_") + user;
-    emit reset();
-    createTables();
-    emit fetch();
-}
-
-void VSQMessagesDatabase::createTables()
+void VSQMessagesDatabase::createTablesIfDontExist()
 {
     qCDebug(lcDatabase) << "Creation of table:" << m_tableName;
     const QString queryString = QString(
@@ -92,38 +83,74 @@ void VSQMessagesDatabase::createTables()
     }
 }
 
-void VSQMessagesDatabase::onFetch()
+void VSQMessagesDatabase::onFetchAll(const QString &userWithEnv)
 {
-    qCDebug(lcDatabase) << "Fetching:" << m_tableName;
-    const QString queryString = QString("SELECT * FROM %1 ORDER BY timestamp").arg(m_tableName);
+    if (userWithEnv.isEmpty())
+        return;
+
+    // Create table
+    const QString user = VSQUtils::escapedUserName(userWithEnv);
+    m_tableName = QString("Messages_") + user;
+    createTablesIfDontExist();
+
+    // Fetch chats
+    qCDebug(lcDatabase) << "Fetching chats:" << m_tableName;
+    const QString queryString = QString(
+        "SELECT contact, body, max(timestamp) AS timestamp, 0 as unread "
+        "FROM %1 "
+        "GROUP BY contact "
+        "ORDER BY max(timestamp) DESC"
+    ).arg(m_tableName);
     QSqlQuery query(queryString, *m_database);
     if (!query.exec()) {
-        qFatal("Failed to fetch messages: %s", qPrintable(query.lastError().text()));
+        qFatal("Failed to fetch chats: %s", qPrintable(query.lastError().text()));
+    }
+    QVector<Chat> chats;
+    while (query.next()) {
+        Chat chat;
+        chat.contact = query.value("contact").toString();
+        chat.lastMessageBody = query.value("body").toString();
+        chat.lastEventTimestamp = query.value("timestamp").toDateTime();
+        chat.unreadMessageCount = query.value("unread").toInt();
+        chats.push_back(chat);
+    }
+    emit chatsFetched(chats);
+
+    // Fetch messages
+    qCDebug(lcDatabase) << "Fetching messages:" << m_tableName;
+    const QString queryString2 = QString(
+        "SELECT * "
+        "FROM %1 "
+        "ORDER BY timestamp "
+    ).arg(m_tableName);
+    QSqlQuery query2(queryString2, *m_database);
+    if (!query2.exec()) {
+        qFatal("Failed to fetch messages: %s", qPrintable(query2.lastError().text()));
     }
     QVector<Message> messages;
-    while (query.next()) {
+    while (query2.next()) {
         Message message;
-        message.id = query.value("id").toString();
-        message.timestamp = query.value("timestamp").toDateTime();
-        message.body = query.value("body").toString();
-        message.contact = query.value("contact").toString();
-        message.author = static_cast<Message::Author>(query.value("author").toInt());
-        message.status = static_cast<Message::Status>(query.value("status").toInt());
-        auto attachment_id = query.value("attachment_id").toString();
+        message.id = query2.value("id").toString();
+        message.timestamp = query2.value("timestamp").toDateTime();
+        message.body = query2.value("body").toString();
+        message.contact = query2.value("contact").toString();
+        message.author = static_cast<Message::Author>(query2.value("author").toInt());
+        message.status = static_cast<Message::Status>(query2.value("status").toInt());
+        auto attachment_id = query2.value("attachment_id").toString();
         if (!attachment_id.isEmpty()) {
             Attachment attachment;
             attachment.id = attachment_id;
-            attachment.type = static_cast<Attachment::Type>(query.value("attachment_type").toInt());
-            attachment.local_url = query.value("local_url").toString();
-            attachment.size = query.value("size").toInt();
+            attachment.type = static_cast<Attachment::Type>(query2.value("attachment_type").toInt());
+            attachment.local_url = query2.value("local_url").toString();
+            attachment.size = query2.value("size").toInt();
             message.attachment = attachment;
         }
         messages.push_back(message);
     }
-    emit fetched(messages, true); // TODO(fpohtmeh): fetch paritally
+    emit messagesFetched(messages);
 }
 
-void VSQMessagesDatabase::onInsert(const Message &message)
+void VSQMessagesDatabase::onInsertMessage(const Message &message)
 {
     qCDebug(lcDatabase) << "Insertion of message:" << message.id;
     const QString queryString = QString(
@@ -147,7 +174,7 @@ void VSQMessagesDatabase::onInsert(const Message &message)
     }
 }
 
-void VSQMessagesDatabase::onUpdateStatus(const Message &message)
+void VSQMessagesDatabase::onUpdateMessageStatus(const Message &message)
 {
     qCDebug(lcDatabase) << "Updating of message status:" << message.id << message.status;
     const QString queryString = QString(

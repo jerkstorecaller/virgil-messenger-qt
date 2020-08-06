@@ -16,6 +16,7 @@ Control {
             bottomMargin: logControl.visible ? logControl.height : 0
         }
         spacing: 0
+        clip: logControl.visible
 
         ServersPanel {
             id: serversPanel
@@ -162,7 +163,6 @@ Control {
     }
 
     function navigateTo(page, params, animate, clearHistory) {
-
         const pageName = "%1Page".arg(page)
         const path = "./pages/%1.qml".arg(pageName)
 

@@ -154,6 +154,9 @@ void VSQClient::start()
 
 bool VSQClient::xmppConnect()
 {
+#ifdef VS_OFFLINE
+    return true;
+#endif
     const auto password = m_core.xmppPassword();
     if (!password) {
         m_lastErrorText = m_core.lastErrorText();
@@ -377,10 +380,12 @@ void VSQClient::onSignInWithKey(const QString &user, const QString &password)
 
 void VSQClient::onAddContact(const QString &contact)
 {
-    if (m_core.userExists(contact))
-        emit contactAdded(contact);
-    else
+    if (contact == m_core.user())
+        emit addContactFailed(contact, QString("Cannot add current user as contact"));
+    else if (!m_core.userExists(contact))
         emit addContactFailed(contact, QString("Contact %1 doesn't exist").arg(contact));
+    else
+        emit contactAdded(contact);
 }
 
 void VSQClient::onConnected()
