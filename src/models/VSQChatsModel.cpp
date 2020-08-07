@@ -49,26 +49,59 @@ VSQChatsModel::VSQChatsModel(VSQMessagesDatabase *messagesDatabase, QObject *par
 VSQChatsModel::~VSQChatsModel()
 {}
 
-void VSQChatsModel::processMessage(const Message &message)
+void VSQChatsModel::addMessage(const Message &message)
 {
-    updateChat(message.contact, message.body, message.timestamp, message.status);
-}
+    const bool isUnread = message.author == Message::Author::Contact && message.status != Message::Status::Read;
+    if (isUnread)
+        qCDebug(lcChatsModel) << "Received unread message from" << message.contact;
 
-void VSQChatsModel::processContact(const QString &contact)
-{
-    if (!findChatRow(contact))
-        addChat(contact, QLatin1String(), QDateTime::currentDateTime(), NullOptional);
-}
-
-void VSQChatsModel::updateMessageStatus(const Message &message)
-{
-    auto chatRow = findChatRow(message.contact);
+    const auto chatRow = findChatRow(message.contact);
     if (!chatRow) {
-        qCritical() << "Message status changed but chat doesn't exist:" << message.contact;
+        addNewChat(message.contact, message.body, message.timestamp, isUnread ? 1 : 0);
     }
-    else if (message.status == Message::Status::Read) {
+    else {
         const int row = *chatRow;
-        m_chats[row].unreadMessageCount--;
+        auto &chat = m_chats[row];
+        chat.lastMessageBody = message.body;
+        if (chat.lastEventTimestamp < message.timestamp) {
+            chat.lastEventTimestamp = message.timestamp;
+        }
+        QVector<int> roles { LastMessageBodyRole, LastEventTimeRole, LastEventTimestampRole };
+        if (isUnread) {
+            ++chat.unreadMessageCount;
+            roles << UnreadMessagesCountRole;
+        }
+        emit dataChanged(index(row), index(row), roles);
+    }
+}
+
+void VSQChatsModel::addContact(const QString &contact)
+{
+    if (!findChatRow(contact)) {
+        addNewChat(contact, QLatin1String(), QDateTime::currentDateTime(), 0);
+    }
+}
+
+void VSQChatsModel::processMessageStatus(const Message &message)
+{
+    const bool isUnread = message.author == Message::Author::Contact && message.status != Message::Status::Read;
+    const bool isRead = message.author == Message::Author::Contact && message.status == Message::Status::Read;
+
+    const auto chatRow = findChatRow(message.contact);
+    if (!chatRow) {
+        addNewChat(message.contact, message.body, message.timestamp, isUnread ? 1 : 0);
+    }
+    else if (isUnread || isRead) {
+        const int row = *chatRow;
+        auto &chat = m_chats[row];
+        if (isUnread) {
+            ++chat.unreadMessageCount;
+            qCDebug(lcChatsModel) << "Message was marked as unread:" << message.id;
+        }
+        else if (isRead) {
+            --chat.unreadMessageCount;
+            qCDebug(lcChatsModel) << "Message was marked as read:" << message.id;
+        }
         emit dataChanged(index(row), index(row), { UnreadMessagesCountRole });
     }
 }
@@ -109,17 +142,11 @@ QVariant VSQChatsModel::data(const QModelIndex &index, int role) const
     }
 }
 
-void VSQChatsModel::setUser(const QString &user)
-{
-    if (user.isEmpty())
-        return;
-    qCDebug(lcChatsModel) << "Chats user:" << user;
-}
-
 void VSQChatsModel::setRecipient(const QString &recipient)
 {
-    if (m_recipient == recipient || recipient.isEmpty())
+    if (m_recipient == recipient) {
         return;
+    }
     qCDebug(lcChatsModel) << "Chats recipient:" << recipient;
     m_recipient = recipient;
 }
@@ -136,46 +163,26 @@ Optional<int> VSQChatsModel::findChatRow(const QString &contact) const
     return NullOptional;
 }
 
-void VSQChatsModel::addChat(const QString &contact, const QString &messageBody, const QDateTime &eventTimestamp,
-                            const Optional<Message::Status> status)
+void VSQChatsModel::addFetchedChats(const QString &user, const QVector<Chat> &chats)
 {
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    Chat chat;
-    chat.contact = contact;
-    chat.lastMessageBody = messageBody;
-    chat.lastEventTimestamp = eventTimestamp;
-    chat.unreadMessageCount = (status && *status == Message::Status::Received) ? 1 : 0;
-    m_chats.push_back(chat);
-    endInsertRows();
-}
-
-void VSQChatsModel::updateChat(const QString &contact, const QString &messageBody, const QDateTime &eventTimestamp,
-                            const Optional<Message::Status> status)
-{
-    const auto chatRow = findChatRow(contact);
-    if (!chatRow) {
-        addChat(contact, messageBody, eventTimestamp, status);
-    }
-    else {
-        const int row = *chatRow;
-        auto &chat = m_chats[row];
-        if (chat.lastEventTimestamp > eventTimestamp)
-            return;
-        chat.lastMessageBody = messageBody;
-        chat.lastEventTimestamp = eventTimestamp;
-        QVector<int> roles { LastMessageBodyRole, LastEventTimeRole, LastEventTimestampRole };
-        if (status && *status == Message::Status::Received && m_recipient != contact) {
-            ++chat.unreadMessageCount;
-            roles << UnreadMessagesCountRole;
-        }
-        emit dataChanged(index(row), index(row), roles);
-    }
-}
-
-void VSQChatsModel::addFetchedChats(const QVector<Chat> &chats)
-{
+    Q_UNUSED(user);
     beginResetModel();
     m_chats = chats;
     endResetModel();
     qCDebug(lcChatsModel) << "Chats are updated";
+}
+
+void VSQChatsModel::addNewChat(const QString &contact, const QString &lastMessageBody, const QDateTime &lastEventTimestamp, int unreadMessageCount)
+{
+    Chat chat;
+    chat.contact = contact;
+    chat.lastMessageBody = lastMessageBody;
+    chat.lastEventTimestamp = lastEventTimestamp;
+    chat.unreadMessageCount = unreadMessageCount;
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    m_chats.push_back(chat);
+    endInsertRows();
+
+    if (unreadMessageCount)
+        qCDebug(lcChatsModel) << "Added new unread chat for:" << contact;
 }

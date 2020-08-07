@@ -74,10 +74,6 @@ bool VSQCore::signIn(const QString &userWithEnv)
         return false;
     }
 
-#ifdef VS_OFFLINE
-    return true;
-#endif
-
     // Sign In user, using Virgil Service
     if (VS_CODE_OK != vs_messenger_virgil_sign_in(&creds)) {
         m_lastErrorText = QLatin1String("Cannot Sign In user");
@@ -168,10 +164,6 @@ Optional<QString> VSQCore::encryptMessageBody(const QString &contact, const QStr
     QString internalJson = doc.toJson(QJsonDocument::Compact);
     qCDebug(lcCore) << "json before encryption:" << internalJson;
 
-#ifdef VS_OFFLINE
-    return internalJson;
-#endif
-
     // Encrypt message
     if (VS_CODE_OK != vs_messenger_virgil_encrypt_msg(
                      contact.toStdString().c_str(),
@@ -222,9 +214,6 @@ Optional<QString> VSQCore::decryptMessageBody(const QString &contact, const QStr
 
 bool VSQCore::userExists(const QString &user) const
 {
-#ifdef VS_OFFLINE
-    return true;
-#endif
     if (VS_CODE_OK != vs_messenger_virgil_search(user.toStdString().c_str()))
         return false;
     return true;

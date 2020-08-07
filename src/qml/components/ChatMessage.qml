@@ -19,7 +19,7 @@ Control {
     property string status: ""
     property bool failed: false
 
-    property bool inRow: false
+    property bool inRow: true
     property bool firstInRow: true
 
     property string attachmentId
@@ -273,7 +273,7 @@ Control {
             Label {
                 id: statusLabel
                 height: 12
-                text: isUser ? "" : chatMessage.status
+                text: chatMessage.status
                 color: chatMessage.failed ? "red" : Theme.labelColor
                 font.pixelSize: UiHelper.fixFontSz(11)
             }

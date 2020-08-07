@@ -54,13 +54,13 @@ public:
     ~VSQDatabase() override;
 
     void open();
-    void setUser(const QString &userWithEnv);
 
     VSQMessagesDatabase *messages();
 
 signals:
     void opened();
     void failed();
+    void fetch(const QString &user);
 
 private:
     const VSQSettings *m_settings;

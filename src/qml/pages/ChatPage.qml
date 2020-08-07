@@ -143,7 +143,7 @@ Page {
         target: messenger
         onMessageSent: messageSent.play
         onSendMessageFailed: messageSent.play
-        onMessageAdded: scrollToEndTimer.start()
         onRecipientChanged: scrollToEndTimer.start()
+        onRecipientMessageAdded: scrollToEndTimer.start()
     }
 }

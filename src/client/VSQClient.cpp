@@ -154,9 +154,6 @@ void VSQClient::start()
 
 bool VSQClient::xmppConnect()
 {
-#ifdef VS_OFFLINE
-    return true;
-#endif
     const auto password = m_core.xmppPassword();
     if (!password) {
         m_lastErrorText = m_core.lastErrorText();
@@ -318,7 +315,6 @@ Optional<Message> VSQClient::createMessage(const QXmppMessage &xmppMessage)
     message.id = xmppMessage.id();
     message.timestamp = QDateTime::currentDateTime();
     message.body = *body;
-    // FIXME(fpohtmeh): get attachment from xmpp message?
     if (sender == m_core.user()) {
         // Message from self sent from another device
         message.contact = recipient;

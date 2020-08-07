@@ -92,6 +92,11 @@ VSQMessenger::~VSQMessenger()
 
 void VSQMessenger::start()
 {
+    if (!m_databaseThread->isRunning())
+        qFatal("Database thread isn't running");
+    if (!m_clientThread->isRunning())
+        qFatal("Client thread isn't running");
+
     setupConnections();
 
     // Sign-in or request credentials
@@ -103,60 +108,51 @@ void VSQMessenger::start()
 
 void VSQMessenger::setupConnections()
 {
-    // Authorization: messenger-to-client
+    // Messenger
+    connect(this, &VSQMessenger::createSendMessage, this, &VSQMessenger::onCreateSendMessage);
+    connect(this, &VSQMessenger::sendMessage, this, &VSQMessenger::addMessage);
+
+    // Messenger to client
     connect(this, &VSQMessenger::signIn, m_client, &VSQClient::signIn);
     connect(this, &VSQMessenger::signInWithKey, m_client, &VSQClient::signInWithKey);
     connect(this, &VSQMessenger::signOut, m_client, &VSQClient::signOut);
     connect(this, &VSQMessenger::signUp, m_client, &VSQClient::signUp);
     connect(this, &VSQMessenger::backupKey, m_client, &VSQClient::backupKey);
-    // Authorization status: client-to-messenger
+
+    connect(this, &VSQMessenger::addContact, m_client, &VSQClient::addContact);
+
+    connect(this, &VSQMessenger::sendMessage, m_client, &VSQClient::sendMessage);
+
+    connect(this, &VSQMessenger::checkConnectionState, m_client, &VSQClient::checkConnectionState);
+    connect(this, &VSQMessenger::setOnlineStatus, m_client, &VSQClient::setOnlineStatus);
+
+    // Client to messenger
     connect(m_client, &VSQClient::signedIn, this, &VSQMessenger::signedIn);
-    connect(m_client, &VSQClient::signedIn, this, &VSQMessenger::setUser);
     connect(m_client, &VSQClient::signInFailed, this, &VSQMessenger::signInFailed);
     connect(m_client, &VSQClient::signedOut, this, std::bind(&VSQMessenger::credentialsRequested, this, true));
-    connect(m_client, &VSQClient::signedOut, this, std::bind(&VSQMessenger::setUser, this, QLatin1String()));
     connect(m_client, &VSQClient::signedOut, this, &VSQMessenger::signedOut);
     connect(m_client, &VSQClient::keyBackuped, this, &VSQMessenger::keyBackuped);
     connect(m_client, &VSQClient::backupKeyFailed, this, &VSQMessenger::backupKeyFailed);
-    // Signed users: client-to-settings
-    connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::addUserToList);
-    connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::setLastSignedInUser);
 
-    // Contacts: messenger-to-client
-    connect(this, &VSQMessenger::addContact, m_client, &VSQClient::addContact);
-    // Contacts status: client-to-messenger
     connect(m_client, &VSQClient::contactAdded, this, &VSQMessenger::contactAdded);
     connect(m_client, &VSQClient::addContactFailed, this, &VSQMessenger::addContactFailed);
-    // Contacts status: client-to-models
-    connect(m_client, &VSQClient::contactAdded, &m_chatsModel, &VSQChatsModel::processContact);
 
-    // Messages: messenger-to-client
-    connect(this, &VSQMessenger::createSendMessage, this, &VSQMessenger::onCreateSendMessage);
-    connect(this, &VSQMessenger::sendMessage, m_client, &VSQClient::sendMessage);
-    // Messages status: client-to-messenger
     connect(m_client, &VSQClient::messageSent, this, &VSQMessenger::messageSent);
     connect(m_client, &VSQClient::sendMessageFailed, this, &VSQMessenger::sendMessageFailed);
-    // Messages: messenger-to-model
-    connect(this, &VSQMessenger::sendMessage, &m_messagesModel, &VSQMessagesModel::addMessage);
-    connect(this, &VSQMessenger::userChanged, &m_messagesModel, &VSQMessagesModel::setUser);
-    connect(this, &VSQMessenger::userChanged, &m_chatsModel, &VSQChatsModel::setUser);
-    connect(this, &VSQMessenger::recipientChanged, &m_messagesModel, &VSQMessagesModel::setRecipient);
-    connect(this, &VSQMessenger::recipientChanged, &m_chatsModel, &VSQChatsModel::setRecipient);
-    // Messages status: client-to-model
-    connect(m_client, &VSQClient::messageReceived, &m_messagesModel, &VSQMessagesModel::addMessage);
+
+    connect(m_client, &VSQClient::messageReceived, this, &VSQMessenger::addMessage);
+
+    connect(m_client, &VSQClient::signedIn, this, &VSQMessenger::setUser);
+    connect(m_client, &VSQClient::signedOut, this, std::bind(&VSQMessenger::setUser, this, QLatin1String()));
+
+    // Messages model: signals from client
     connect(m_client, &VSQClient::messageSent, &m_messagesModel,
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messagesModel, args::_1, Message::Status::Sent));
     connect(m_client, &VSQClient::sendMessageFailed, &m_messagesModel,
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messagesModel, args::_1, Message::Status::Failed));
     connect(m_client, &VSQClient::messageDelivered, &m_messagesModel,
         std::bind(&VSQMessagesModel::setMessageStatusById, &m_messagesModel, args::_1, Message::Status::Received));
-    // Messages: model-to-messenger
-    connect(&m_messagesModel, &VSQMessagesModel::messageAdded, this, &VSQMessenger::messageAdded);
-    // Messages status: model-to-model
-    connect(&m_messagesModel, &VSQMessagesModel::messageAdded, &m_chatsModel, &VSQChatsModel::processMessage);
-    connect(&m_messagesModel, &VSQMessagesModel::messageStatusChanged, &m_chatsModel, &VSQChatsModel::updateMessageStatus);
 
-    // Upload status: client-to-model
     connect(m_client, &VSQClient::uploadStarted, &m_messagesModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messagesModel, args::_1, false));
     connect(m_client, &VSQClient::uploadProgressChanged, &m_messagesModel, &VSQMessagesModel::setUploadProgress);
@@ -164,13 +160,18 @@ void VSQMessenger::setupConnections()
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messagesModel, args::_1, false));
     connect(m_client, &VSQClient::uploadFailed, &m_messagesModel,
         std::bind(&VSQMessagesModel::setUploadFailed, &m_messagesModel, args::_1, true));
-    // Other connections: client-to-crash reporter
+
+    // Chats model: signals from client
+    connect(m_client, &VSQClient::contactAdded, &m_chatsModel, &VSQChatsModel::addContact);
+    // Chats model: signals from messages model
+    connect(&m_messagesModel, &VSQMessagesModel::messageStatusChanged, &m_chatsModel, &VSQChatsModel::processMessageStatus);
+
+    // Settings
+    connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::addUserToList);
+    connect(m_client, &VSQClient::signedIn, m_settings, &VSQSettings::setLastSignedInUser);
+
+    // Crash reporter
     connect(m_client, &VSQClient::virgilUrlChanged, m_crashReporter, &VSQCrashReporter::setUrl);
-    // Other connections: messenger-to-client
-    connect(this, &VSQMessenger::checkConnectionState, m_client, &VSQClient::checkConnectionState);
-    connect(this, &VSQMessenger::setOnlineStatus, m_client, &VSQClient::setOnlineStatus);
-    // Other connections: messenger-to-database
-    connect(this, &VSQMessenger::userChanged, m_database, &VSQDatabase::setUser);
 }
 
 void VSQMessenger::setUser(const QString &user)
@@ -180,6 +181,8 @@ void VSQMessenger::setUser(const QString &user)
     m_user = user;
     qCDebug(lcMessenger) << "Messenger user:" << user;
     emit userChanged(user);
+
+    m_database->fetch(user);
     setRecipient(QString());
 }
 
@@ -190,6 +193,9 @@ void VSQMessenger::setRecipient(const QString &recipient)
     m_recipient = recipient;
     qCDebug(lcMessenger) << "Messenger recipient:" << recipient;
     emit recipientChanged(recipient);
+
+    m_chatsModel.setRecipient(recipient);
+    m_messagesModel.setRecipient(recipient);
 }
 
 VSQMessagesModel *VSQMessenger::messageModel()
@@ -200,6 +206,19 @@ VSQMessagesModel *VSQMessenger::messageModel()
 VSQChatsModel *VSQMessenger::chatsModel()
 {
     return &m_chatsModel;
+}
+
+void VSQMessenger::addMessage(const Message &message)
+{
+    auto msg = message;
+    if (msg.author == Message::Author::Contact && msg.contact == m_recipient && msg.status != Message::Status::Read) {
+        qCDebug(lcMessenger) << "Message" << msg.id << "was marked as read";
+        msg.status = Message::Status::Read;
+    }
+    m_messagesModel.addMessage(msg);
+    m_chatsModel.addMessage(msg);
+    if (msg.contact == m_recipient)
+        emit recipientMessageAdded();
 }
 
 void VSQMessenger::onCreateSendMessage(const QString &text, const QVariant &attachmentUrl, const Enums::AttachmentType attachmentType)

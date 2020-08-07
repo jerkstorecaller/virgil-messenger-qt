@@ -52,16 +52,16 @@ public:
     ~VSQMessagesDatabase() override;
 
 signals:
-    void fetchAll(const QString &userWithEnv);
+    void fetch(const QString &user);
     void insertMessage(const Message &message);
     void updateMessageStatus(const Message &message);
 
-    void chatsFetched(const QVector<Chat> &chats);
-    void messagesFetched(const QVector<Message> &messages);
+    void chatsFetched(const QString &user, const QVector<Chat> &chats);
+    void messagesFetched(const QString &user, const QVector<Message> &messages);
 
 private:
     void createTablesIfDontExist();
-    void onFetchAll(const QString &userWithEnv);
+    void onFetch(const QString &user);
     void onInsertMessage(const Message &message);
     void onUpdateMessageStatus(const Message &message);
 

@@ -83,20 +83,19 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     QVariant data(const QModelIndex &index, int role) const override;
 
-    void setUser(const QString &user);
     void setRecipient(const QString &recipient);
 
 signals:
-    void messageAdded(const Message &message);
     void messageStatusChanged(const Message &message);
     void recipientChanged(const QString &recipient);
 
 private:
+    void setUser(const QString &user);
     Optional<int> findMessageRow(const QString &id) const;
     void setMessageStatusByRow(int row, const Message::Status status);
-    void addFetchedMessages(const QVector<Message> &messages);
+    void addFetchedMessages(const QString &user, const QVector<Message> &messages);
 
-    QString displayStatus(const Message::Status status) const;
+    QString displayStatus(const Message &message) const;
     bool isInRow(const Message &message, int row) const;
     bool isFirstInRow(const Message &message, int row) const;
 

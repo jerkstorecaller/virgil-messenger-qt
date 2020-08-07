@@ -52,10 +52,10 @@ VSQMessagesModel::~VSQMessagesModel()
 void VSQMessagesModel::addMessage(const Message &message)
 {
     m_messagesDatabase->insertMessage(message);
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    const int row = rowCount();
+    beginInsertRows(QModelIndex(), row, row);
     m_messages.push_back(message);
     endInsertRows();
-    emit messageAdded(message);
 }
 
 void VSQMessagesModel::setMessageStatus(const Message &message, const Message::Status status)
@@ -154,7 +154,7 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
     case IsUserRoles:
         return message.author == Message::Author::User;
     case StatusRole:
-        return displayStatus(message.status);
+        return displayStatus(message);
     case FailedRole:
         return message.status == Message::Status::Failed;
     case InRowRole:
@@ -182,20 +182,35 @@ QVariant VSQMessagesModel::data(const QModelIndex &index, int role) const
     }
 }
 
-void VSQMessagesModel::setUser(const QString &user)
-{
-    if (m_user == user || user.isEmpty())
-        return;
-    qCDebug(lcMessagesModel) << "Messages user:" << user;
-    m_user = user;
-}
 void VSQMessagesModel::setRecipient(const QString &recipient)
 {
-    if (m_recipient == recipient || recipient.isEmpty())
+    if (m_recipient == recipient) {
         return;
+    }
     qCDebug(lcMessagesModel) << "Messages recipient:" << recipient;
     m_recipient = recipient;
     emit recipientChanged(recipient);
+
+    // Mark all recipient messages as read
+    if (recipient.isEmpty()) {
+        return;
+    }
+    for (int row = 0, rowCount = m_messages.size(); row < rowCount; ++row) {
+        const auto &message = m_messages[row];
+        if (message.author == Message::Author::User || message.status == Message::Status::Read || message.contact != m_recipient) {
+            continue;
+        }
+        setMessageStatusByRow(row, Message::Status::Read);
+    }
+}
+
+void VSQMessagesModel::setUser(const QString &user)
+{
+    if (m_user == user) {
+        return;
+    }
+    qCDebug(lcMessagesModel) << "Messages user:" << user;
+    m_user = user;
 }
 
 Optional<int> VSQMessagesModel::findMessageRow(const QString &id) const
@@ -214,50 +229,47 @@ void VSQMessagesModel::setMessageStatusByRow(int row, const Message::Status stat
         return;
     message.status = status;
     m_messagesDatabase->updateMessageStatus(message);
+
+    emit messageStatusChanged(message);
     emit dataChanged(index(row), index(row), { StatusRole });
-}
 
-void VSQMessagesModel::addFetchedMessages(const QVector<Message> &messages)
-{
-    beginResetModel();
-    m_messages = messages;
-    endResetModel();
-
-    int row = -1;
-    for (auto &message : messages) {
-        ++row;
-        if (message.contact != m_recipient)
-            continue;
-        if (message.author == Message::Author::User)
-            continue;
-        setMessageStatusByRow(row, Message::Status::Read);
+    if (status == Message::Status::Read && message.author == Message::Author::Contact) {
+        qCDebug(lcMessagesModel) << QString("Message '%1' from '%2' was read").arg(message.body, message.contact);
     }
 }
 
-QString VSQMessagesModel::displayStatus(const Message::Status status) const
+void VSQMessagesModel::addFetchedMessages(const QString &user, const QVector<Message> &messages)
 {
-    switch (status) {
+    setUser(user);
+    beginResetModel();
+    m_messages = messages;
+    endResetModel();
+    qCDebug(lcMessagesModel) << "Messages are updated";
+}
+
+QString VSQMessagesModel::displayStatus(const Message &message) const
+{
+    if (message.author == Message::Author::User)
+        return QLatin1String();
+    switch (message.status) {
     case Message::Status::Created:
-        return tr("Created");
+        return tr("sending");
     case Message::Status::Sent:
-        return tr("Sent");
+        return tr("sent");
     case Message::Status::Received:
-        return tr("Received");
-    case Message::Status::Read:
-        return tr("Read");
+        return tr("delivered");
     case Message::Status::Failed:
-        return tr("Failed");
+        return tr("failed");
     default:
-        qCritical() << "Invalid message status";
         return QLatin1String();
     }
 }
 
 bool VSQMessagesModel::isInRow(const Message &message, int row) const
 {
-    if (row == 0)
-        return false;
-    return m_messages[row - 1].author == message.author;
+    if (row + 1 == rowCount())
+        return true;
+    return m_messages[row + 1].author == message.author;
 }
 
 bool VSQMessagesModel::isFirstInRow(const Message &message, int row) const
@@ -267,5 +279,7 @@ bool VSQMessagesModel::isFirstInRow(const Message &message, int row) const
     const Message &prevMessage = m_messages[row - 1];
     // Message is considered to be the first in a row when it
     // sends in a range of 5 min with previous message and from the same author
-    return prevMessage.author == message.author || prevMessage.timestamp.addSecs(5 * 60) <= message.timestamp;
+    const bool sameAuthor = prevMessage.author != message.author;
+    const bool in5MinRange = prevMessage.timestamp.addSecs(5 * 60) > message.timestamp;
+    return sameAuthor || !in5MinRange;
 }

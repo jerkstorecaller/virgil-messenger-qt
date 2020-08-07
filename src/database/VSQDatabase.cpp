@@ -46,7 +46,9 @@ VSQDatabase::VSQDatabase(const VSQSettings *settings, QObject *parent)
     , m_settings(settings)
     , m_connectionName(QLatin1String("VSQDatabase"))
     , m_messages(new VSQMessagesDatabase(&m_database, parent))
-{}
+{
+    connect(this, &VSQDatabase::fetch, m_messages, &VSQMessagesDatabase::fetch);
+}
 
 VSQDatabase::~VSQDatabase()
 {
@@ -71,12 +73,6 @@ void VSQDatabase::open()
     }
     qCDebug(lcDatabase) << "Database is opened:" << m_database.databaseName();
     emit opened();
-}
-
-void VSQDatabase::setUser(const QString &userWithEnv)
-{
-    qCDebug(lcDatabase) << "Set user:" << userWithEnv;
-    m_messages->fetchAll(userWithEnv);
 }
 
 VSQMessagesDatabase *VSQDatabase::messages()

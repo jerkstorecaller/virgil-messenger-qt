@@ -90,7 +90,6 @@ signals:
     void sendMessage(const Message &message);
     void messageSent();
     void sendMessageFailed();
-    void messageAdded();
 
     void quitRequested();
     void credentialsRequested(bool signOut);
@@ -99,6 +98,7 @@ signals:
 
     void userChanged(const QString &user);
     void recipientChanged(const QString &recipient);
+    void recipientMessageAdded();
 
 private:
     void setupConnections();
@@ -109,6 +109,7 @@ private:
     VSQMessagesModel *messageModel();
     VSQChatsModel *chatsModel();
 
+    void addMessage(const Message &message);
     void onCreateSendMessage(const QString &text, const QVariant &attachmentUrl, const Enums::AttachmentType attachmentType);
 
     VSQSettings *m_settings;

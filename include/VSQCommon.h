@@ -90,9 +90,9 @@ namespace Enums {
         Created,
         // Sent by user
         Sent,
-        // Receiver by contact
+        // Received by contact/user
         Received,
-        // Read by contact
+        // Read by user
         Read,
         // Failed to send by user
         Failed

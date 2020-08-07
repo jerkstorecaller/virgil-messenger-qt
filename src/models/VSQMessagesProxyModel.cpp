@@ -63,7 +63,7 @@ void VSQMessagesProxyModel::setSourceModel(QAbstractItemModel *model)
 
 void VSQMessagesProxyModel::setRecipient(const QString &recipient)
 {
-    if (m_recipient == recipient || recipient.isEmpty())
+    if (m_recipient == recipient)
         return;
     m_recipient = recipient;
     qCDebug(lcMessagesModel) << "New recipient for messages filtering:" << recipient;

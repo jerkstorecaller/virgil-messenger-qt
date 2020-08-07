@@ -43,7 +43,7 @@ VSQMessagesDatabase::VSQMessagesDatabase(QSqlDatabase *database, QObject *parent
     : QObject(parent)
     , m_database(database)
 {
-    connect(this, &VSQMessagesDatabase::fetchAll, this, &VSQMessagesDatabase::onFetchAll);
+    connect(this, &VSQMessagesDatabase::fetch, this, &VSQMessagesDatabase::onFetch);
     connect(this, &VSQMessagesDatabase::insertMessage, this, &VSQMessagesDatabase::onInsertMessage);
     connect(this, &VSQMessagesDatabase::updateMessageStatus, this, &VSQMessagesDatabase::onUpdateMessageStatus);
 }
@@ -83,20 +83,27 @@ void VSQMessagesDatabase::createTablesIfDontExist()
     }
 }
 
-void VSQMessagesDatabase::onFetchAll(const QString &userWithEnv)
+void VSQMessagesDatabase::onFetch(const QString &user)
 {
-    if (userWithEnv.isEmpty())
+    if (user.isEmpty())
         return;
 
     // Create table
-    const QString user = VSQUtils::escapedUserName(userWithEnv);
-    m_tableName = QString("Messages_") + user;
+    m_tableName = QString("Messages_") + VSQUtils::escapedUserName(user);
     createTablesIfDontExist();
 
     // Fetch chats
     qCDebug(lcDatabase) << "Fetching chats:" << m_tableName;
     const QString queryString = QString(
-        "SELECT contact, body, max(timestamp) AS timestamp, 0 as unread "
+        "SELECT contact, body, max(timestamp) AS timestamp, "
+        "SUM(CASE author "
+        "  WHEN 0 THEN 0 "
+        "  ELSE "
+        "    CASE status "
+        "      WHEN 3 THEN 0"
+        "      ELSE 1"
+        "    END "
+        "END) AS unread "
         "FROM %1 "
         "GROUP BY contact "
         "ORDER BY max(timestamp) DESC"
@@ -114,7 +121,7 @@ void VSQMessagesDatabase::onFetchAll(const QString &userWithEnv)
         chat.unreadMessageCount = query.value("unread").toInt();
         chats.push_back(chat);
     }
-    emit chatsFetched(chats);
+    emit chatsFetched(user, chats);
 
     // Fetch messages
     qCDebug(lcDatabase) << "Fetching messages:" << m_tableName;
@@ -147,7 +154,7 @@ void VSQMessagesDatabase::onFetchAll(const QString &userWithEnv)
         }
         messages.push_back(message);
     }
-    emit messagesFetched(messages);
+    emit messagesFetched(user, messages);
 }
 
 void VSQMessagesDatabase::onInsertMessage(const Message &message)
