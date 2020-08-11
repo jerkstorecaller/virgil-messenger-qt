@@ -435,7 +435,7 @@ VSQMessenger::signIn(QString user) {
         }
 
         // Check previus run is crashed
-        m_logging->checkAppCrash();
+        //m_logging->checkAppCrash();
 
         // Connect over XMPP
         return _connect(m_user, m_deviceId, m_userId, true) ? MRES_OK : MRES_ERR_SIGNIN;
