@@ -108,17 +108,17 @@ bool VSQLogging::sendLogFiles() {
         return false;
     }
 
-    QDirIterator fileIterator(writeDir.absolutePath(), QStringList() << "virgil-messenger.log*");
+    QDirIterator fileIterator(writeDir.absolutePath(), QStringList() << "*virgil-messenger*.log*");
     while (fileIterator.hasNext()) {
         QFile readFile(fileIterator.next());
         if ( readFile.open( QIODevice::ReadOnly | QIODevice::Text ) ) {
-            qDebug() << "Read file:" << readFile.fileName() << endl;
+            qDebug() << "Read file:" << readFile.fileName();
             fileData.append(readFile.readAll());
         }
         else
-            qDebug() << "Can't open " << readFile.fileName() << readFile.errorString() << endl;
+            qDebug() << "Can't open " << readFile.fileName() << readFile.errorString();
     }
-
+    qDebug() << "Crash report data size: " << fileData.size() << "bytes";
     sendFileToBackendRequest(fileData);
     return true;
 }
@@ -129,7 +129,7 @@ bool VSQLogging::sendFileToBackendRequest(QByteArray fileData) {
     size_t sizeBearer = 1024;
 
     vs_messenger_virgil_get_auth_token(buffBearer ,sizeBearer);
-    qDebug("Backend token [%s]", buffBearer);
+    //qDebug("Backend token [%s]", buffBearer);
 
     manager = new QNetworkAccessManager();
 
@@ -151,7 +151,7 @@ void VSQLogging::endpointReply(){
     QNetworkReply *reply= qobject_cast<QNetworkReply *>(sender());
     if (reply->error() == QNetworkReply::NoError)
       {
-        qDebug("Send report OK");
+        qDebug() << "Send report OK [" << reply->size() << "Bytes]";
         emit reportSent("Report send OK");
       }
       else {
