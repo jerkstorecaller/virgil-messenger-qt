@@ -205,6 +205,7 @@ private:
     QString m_userId;
     QString m_deviceId;
     QString m_recipient;
+    QString m_xmppUrl;
     QString m_xmppPass;
     VSQEnvType m_envType;
     static const VSQEnvType _defaultEnv = PROD;
@@ -250,7 +251,7 @@ private:
     _saveCredentials(const QString &user, const QString &deviceId, const vs_messenger_virgil_user_creds_t &creds);
 
     bool
-    _loadCredentials(const QString &user, QString &deviceId, vs_messenger_virgil_user_creds_t &creds);
+    _loadCredentials(const QString &user, QString &deviceId, QString &xmppURL, vs_messenger_virgil_user_creds_t &creds);
 
     void
     _addToUsersList(const QString &user);

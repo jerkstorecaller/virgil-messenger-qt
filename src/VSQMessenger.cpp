@@ -421,7 +421,7 @@ VSQMessenger::signIn(QString user) {
         memset(&creds, 0, sizeof (creds));
 
         // Load User Credentials
-        if (!_loadCredentials(m_userId, m_deviceId, creds)) {
+        if (!_loadCredentials(m_userId, m_deviceId, m_xmppUrl, creds)) {
             emit fireError(tr("Cannot load user credentials"));
             qDebug() << "Cannot load user credentials";
             return MRES_ERR_NO_CRED;
@@ -526,6 +526,10 @@ QString
 VSQMessenger::_xmppURL() {
     QString res = qgetenv("VS_MSGR_XMPP_URL");
 
+    if (m_xmppUrl != "") {
+        return m_xmppUrl;
+    }
+
     if (res.isEmpty()) {
         switch (m_envType) {
         case PROD:
@@ -600,12 +604,18 @@ VSQMessenger::_saveCredentials(const QString &user, const QString &deviceId, con
 
 /******************************************************************************/
 bool
-VSQMessenger::_loadCredentials(const QString &user, QString &deviceId, vs_messenger_virgil_user_creds_t &creds) {
+VSQMessenger::_loadCredentials(const QString &user, QString &deviceId, QString &xmppURL, vs_messenger_virgil_user_creds_t &creds) {
     QSettings settings(kOrganization, kApp);
 
     auto settingsJson = settings.value(user, QString("")).toString();
     QJsonDocument json(QJsonDocument::fromJson(settingsJson.toUtf8()));
     deviceId = json["device_id"].toString();
+    if (!json["xmpp_url"].isUndefined()) {
+        xmppURL = json["xmpp_url"].toString();
+    }
+    else {
+        xmppURL = "";
+    }
     auto baCred = QByteArray::fromBase64(json["creds"].toString().toUtf8());
 
     if (baCred.size() != sizeof(creds)) {
