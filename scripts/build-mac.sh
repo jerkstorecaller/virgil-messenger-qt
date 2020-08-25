@@ -37,8 +37,8 @@ PKG_IDENTIFIER="com.virgilsecurity.messenger"
 #
 #	Results
 #
-APP_BUNDLE="Area52 Messenger.app"
-DMG_FILE="${BUILD_DIR}/Area52 Messenger.dmg"
+APP_BUNDLE="${APPLICATION_NAME}.app"
+DMG_FILE="${BUILD_DIR}/virgil-messenger.dmg"
 UPDATE_DIR="${BUILD_DIR}/update"
 RELEASE_NOTES="${PROJECT_DIR}/release-notes.html"
 
@@ -141,7 +141,7 @@ function create_appdmg_spec() {
 		"identifier": "${PKG_IDENTIFIER}"	
 	},
 	"contents": [
-		{ "x": 180, "y": 200, "type": "file", "path": "${BUILD_DIR}/${APP_BUNDLE}" },
+		{ "x": 180, "y": 200, "type": "file", "path": "${BUILD_DIR}/Area52 Messenger.app" },
 		{ "x": 460, "y": 200, "type": "link", "path": "/Applications" }
 	]
 }
@@ -167,15 +167,19 @@ function setIcon() {
 #***************************************************************************************
 function create_dmg() {
 	create_appdmg_spec
-	appdmg ${APPDMG_SPEC} ${DMG_FILE}
 
-	setIcon "${IMAGES_FOLDER}" "${DMG_ICON}" "${DMG_FILE}"
+	mv -f "${BUILD_DIR}/${APP_BUNDLE}" "${BUILD_DIR}/Area52 Messenger.app"
+
+	appdmg ${APPDMG_SPEC} "${BUILD_DIR}/Area52 Messenger.dmg"
+
+	setIcon "${IMAGES_FOLDER}" "${DMG_ICON}" "${BUILD_DIR}/Area52 Messenger.dmg"
+
 }
 #***************************************************************************************
 function notarize_dmg() {
 	print_message "Send Application for Apple's notarization"
 
-	NOTARIZE_OUTPUT=$(xcrun altool -t osx -f "${DMG_FILE}" --primary-bundle-id "${PKG_IDENTIFIER}" --notarize-app --username ${USER_NAME} -p ${PASS} 2>&1)
+	NOTARIZE_OUTPUT=$(xcrun altool -t osx -f "${BUILD_DIR}/Area52 Messenger.dmg" --primary-bundle-id "${PKG_IDENTIFIER}" --notarize-app --username ${USER_NAME} -p ${PASS} 2>&1)
 	NOTARIZE_ID=$(echo ${NOTARIZE_OUTPUT} | tr -d "\n" | grep -F 'No errors uploading' | awk -F 'RequestUUID' '{print $2}' | awk -F ' ' '{print $2}')
 
 	echo "NOTARIZE_ID = ${NOTARIZE_ID}"
@@ -206,7 +210,7 @@ function notarize_dmg() {
 
 	print_message "Staple result of the notarization"
 
-	STAMPLE_OUTPUT=$(xcrun stapler staple -v "${DMG_FILE}" 2>&1 | tr -d "\n")
+	STAMPLE_OUTPUT=$(xcrun stapler staple -v "${BUILD_DIR}/Area52 Messenger.dmg" 2>&1 | tr -d "\n")
 
 	if echo ${STAMPLE_OUTPUT} | grep -q -F 'The staple and validate action worked!'; then
 		echo ""
@@ -221,7 +225,7 @@ function prepare_update() {
 	new_dir "${UPDATE_DIR}"
 
 	cp "${RELEASE_NOTES}" "${UPDATE_DIR}/${APPLICATION_NAME}-${VERSION}.html"
-	cp "${DMG_FILE}" "${UPDATE_DIR}/${APPLICATION_NAME}-${VERSION}.dmg"
+	cp "${BUILD_DIR}/Area52 Messenger.dmg" "${UPDATE_DIR}/Area52 Messenger-${VERSION}.dmg"
 
 	rm -rf "${HOME}/Library/Caches/Sparkle_generate_appcast"
 
