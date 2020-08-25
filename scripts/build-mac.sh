@@ -37,8 +37,8 @@ PKG_IDENTIFIER="com.virgilsecurity.messenger"
 #
 #	Results
 #
-APP_BUNDLE="${APPLICATION_NAME}.app"
-DMG_FILE="${BUILD_DIR}/${APPLICATION_NAME}.dmg"
+APP_BUNDLE="Area52 Messenger.app"
+DMG_FILE="${BUILD_DIR}/Area52 Messenger.dmg"
 UPDATE_DIR="${BUILD_DIR}/update"
 RELEASE_NOTES="${PROJECT_DIR}/release-notes.html"
 
