@@ -132,7 +132,7 @@ function build_project() {
 function create_appdmg_spec() {
 	cat <<EOT >"${APPDMG_SPEC}"
 {
-	"title": "Virgil Messenger ${VERSION}",
+	"title": "Area52 Messenger ${VERSION}",
 	"icon": "${IMAGES_FOLDER}/${DMG_ICON}",
 	"background": "${IMAGES_FOLDER}/${BACKGROUND_FILE}",
 	"icon-size": 90,
