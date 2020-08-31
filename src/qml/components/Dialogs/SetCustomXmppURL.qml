@@ -104,9 +104,14 @@ Dialog {
 
     function apply() {
         try {
-            if (url) {
-                Messenger.setCustomXmppURL(xmppTextField.text.toLocaleLowerCase(), msgrTextField.text.toLocaleLowerCase());
+            const xmppURL = xmppTextField.text.toLocaleLowerCase()
+            const msngURL = msgrTextField.text.toLocaleLowerCase()
+
+            if (xmppURL && msngURL) {
+                Messenger.setCustomURLs(xmppURL, msngURL);
             }
+            console.log(xmppURL)
+            console.log(msngURL)
             root.close()
             closed()
         } catch (error) {

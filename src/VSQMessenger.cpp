@@ -1329,7 +1329,8 @@ void VSQMessenger::downloadAttachment(const QString &messageId)
     });
 }
 
-Q_INVOKABLE void VSQMessenger::setCustomURLs(const QString &xmppUrl, const QString &msgrUrl)
+Q_INVOKABLE
+void VSQMessenger::setCustomURLs(const QString &xmppUrl, const QString &msgrUrl)
 {
     m_customXmppUrl = xmppUrl;
     m_customMessengerUrl = msgrUrl;
