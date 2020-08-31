@@ -47,22 +47,42 @@ Dialog {
     y: (parent.height - height) / 2
     visible: true
     modal: true
-    title: qsTr("Set custom XMPP URL")
+    title: qsTr("Set custom URLs")
     standardButtons: Dialog.Apply | Dialog.Discard
     focus: true
 
     property var closed
-    property string url: contactTextField.text.toLowerCase()
 
     contentItem: Rectangle {
         implicitWidth: 400
-        implicitHeight: 50
+        implicitHeight: 100
 
         TextField {
-            id: contactTextField
+            id: xmppTextField
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.topMargin: 3
+            placeholderText: "XMPP URL"
+            color: "black"
+            focus: true
+
+            Keys.onPressed: {
+                if (Platform.isDesktop) {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return)
+                        root.accept();
+                    else if (event.key === Qt.Key_Escape)
+                        root.reject();
+                }
+            }
+        }
+
+        TextField {
+            id: msgrTextField
+            anchors.top: xmppTextField.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.topMargin: 3
+            placeholderText: "MSGR URL"
             color: "black"
             focus: true
 
@@ -85,7 +105,7 @@ Dialog {
     function apply() {
         try {
             if (url) {
-                Messenger.setCustomXmppURL(url);
+                Messenger.setCustomXmppURL(xmppTextField.text.toLocaleLowerCase(), msgrTextField.text.toLocaleLowerCase());
             }
             root.close()
             closed()

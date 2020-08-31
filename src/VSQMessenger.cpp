@@ -136,6 +136,9 @@ VSQMessenger::VSQMessenger(QNetworkAccessManager *networkAccessManager, VSQSetti
 
     qRegisterMetaType<QXmppClient::Error>();
 
+    m_customXmppUrl = "";
+    m_customMessengerUrl = "";
+
     // Connect to Database
     _connectToDatabase();
     m_sqlConversations = new VSQSqlConversationModel(this);
@@ -586,6 +589,11 @@ void VSQMessenger::onAttachmentDecrypted(const QString &uploadId, const QString 
 QString
 VSQMessenger::_virgilURL() {
     QString res = qgetenv("VS_MSGR_VIRGIL");
+
+    if (m_customMessengerUrl != "") {
+        return m_customMessengerUrl;
+    }
+
     if (res.isEmpty()) {
         switch (m_envType) {
         case PROD:
@@ -611,8 +619,8 @@ QString
 VSQMessenger::_xmppURL() {
     QString res = qgetenv("VS_MSGR_XMPP_URL");
 
-    if (m_customUrl != "") {
-        return m_customUrl;
+    if (m_customXmppUrl != "") {
+        return m_customXmppUrl;
     }
 
     if (res.isEmpty()) {
@@ -1321,9 +1329,10 @@ void VSQMessenger::downloadAttachment(const QString &messageId)
     });
 }
 
-Q_INVOKABLE void VSQMessenger::setCustomXmppURL(const QString &url)
+Q_INVOKABLE void VSQMessenger::setCustomURLs(const QString &xmppUrl, const QString &msgrUrl)
 {
-    m_customUrl = url;
+    m_customXmppUrl = xmppUrl;
+    m_customMessengerUrl = msgrUrl;
 }
 
 void VSQMessenger::openAttachment(const QString &messageId)
