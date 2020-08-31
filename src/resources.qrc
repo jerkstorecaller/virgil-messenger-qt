@@ -110,5 +110,6 @@
         <file>qml/resources/icons/Mic Selected@2x.png</file>
         <file>qml/resources/icons/File Download Big.png</file>
         <file>qml/components/CircleProgressBar.qml</file>
+        <file>qml/components/Dialogs/SetCustomXmppURL.qml</file>
     </qresource>
 </RCC>

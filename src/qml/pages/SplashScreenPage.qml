@@ -16,25 +16,32 @@ Page {
     Timer {
         interval: 1000; running: true; repeat: false;
         onTriggered: {
-            if (mainView.lastSignedInUser) {
-                form.showLoading("Logging In as %1...".arg(mainView.lastSignedInUser))
 
-                var future = Messenger.signIn(mainView.lastSignedInUser)
-                Future.onFinished(future, (result) => {
-                    var res = Future.result(future)
-                    if (res === Result.MRES_OK) {
-                        form.hideLoading()
-                        showContacts(true)
-                    } else {
-                       mainView.lastSignedInUser = ""
-                       showAuth()
-                    }
-                })
+            var component = Qt.createComponent("../components/Dialogs/SetCustomXmppURL.qml");
+            if (component.status === Component.Ready) {
+                var dialog = component.createObject(root)
+                dialog.openMe(() => {
+                                  if (mainView.lastSignedInUser) {
+                                      form.showLoading("Logging In as %1...".arg(mainView.lastSignedInUser))
 
-                return
+                                      var future = Messenger.signIn(mainView.lastSignedInUser)
+                                      Future.onFinished(future, (result) => {
+                                          var res = Future.result(future)
+                                          if (res === Result.MRES_OK) {
+                                              form.hideLoading()
+                                              showContacts(true)
+                                          } else {
+                                             mainView.lastSignedInUser = ""
+                                             showAuth()
+                                          }
+                                      })
+
+                                      return
+                                  }
+
+                                  showAuth()
+                              })
             }
-
-            showAuth()
         }
     }
 

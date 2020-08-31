@@ -160,6 +160,8 @@ public slots:
 
     Q_INVOKABLE void openAttachment(const QString &messageId);
 
+    Q_INVOKABLE void setCustomXmppURL(const QString &url);
+
 signals:
     void
     fireError(QString errorText);
@@ -232,6 +234,7 @@ private:
     QString m_userId;
     QString m_deviceId;
     QString m_recipient;
+    QString m_customUrl;
     QString m_xmppPass;
     VSQEnvType m_envType;
     static const VSQEnvType _defaultEnv = PROD;

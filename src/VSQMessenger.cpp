@@ -611,6 +611,10 @@ QString
 VSQMessenger::_xmppURL() {
     QString res = qgetenv("VS_MSGR_XMPP_URL");
 
+    if (m_customUrl != "") {
+        return m_customUrl;
+    }
+
     if (res.isEmpty()) {
         switch (m_envType) {
         case PROD:
@@ -1315,6 +1319,11 @@ void VSQMessenger::downloadAttachment(const QString &messageId)
         qCDebug(lcTransferManager) << QString("Message '%1' attachment was downloaded").arg(msg.messageId);
         emit informationRequested("Saved to downloads");
     });
+}
+
+Q_INVOKABLE void VSQMessenger::setCustomXmppURL(const QString &url)
+{
+    m_customUrl = url;
 }
 
 void VSQMessenger::openAttachment(const QString &messageId)
